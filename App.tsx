@@ -1,5 +1,4 @@
-
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Ride, Request } from './types';
 import { getRides, addRide, getPassengerRequests, getDriverRequests } from './services/rideService';
 import Header from './components/Header';
@@ -15,6 +14,8 @@ const App: React.FC = () => {
   const [driverRequests, setDriverRequests] = useState<Request[]>([]);
   const [dataLoading, setDataLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [view, setView] = useState<'app' | 'profile'>('app');
+  const isInitialLoad = useRef(true);
 
   const fetchData = useCallback(async () => {
     try {
@@ -33,6 +34,7 @@ const App: React.FC = () => {
       console.error(err.message || err);
     } finally {
       setDataLoading(false);
+      isInitialLoad.current = false;
     }
   }, [user]);
 
@@ -52,7 +54,7 @@ const App: React.FC = () => {
     }
   }, [fetchData]);
 
-  if (authLoading || dataLoading) {
+  if (authLoading || (dataLoading && isInitialLoad.current)) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50 text-slate-700">
         <div className="flex items-center space-x-3">
@@ -69,7 +71,7 @@ const App: React.FC = () => {
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 font-sans">
       <div className="container mx-auto px-4 py-8 max-w-4xl">
-        <Header />
+        <Header setView={setView} />
         <main className="mt-8">
           {error && <div className="text-center text-red-500 p-4 bg-red-100 rounded-md">{error}</div>}
           {user ? (
@@ -79,6 +81,8 @@ const App: React.FC = () => {
               passengerRequests={passengerRequests}
               driverRequests={driverRequests}
               refreshData={fetchData}
+              view={view}
+              setView={setView}
             />
           ) : (
             <PassengerView allRides={rides} passengerRequests={[]} refreshData={fetchData} />

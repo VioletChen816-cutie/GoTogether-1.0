@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Ride, RequestStatus } from '../types';
 import { useAuth } from '../providers/AuthProvider';
@@ -15,6 +14,7 @@ const RideCard: React.FC<RideCardProps> = ({ ride, requestStatus, refreshData, i
   const { user, openAuthModal } = useAuth();
   const { from, to, departureTime, seatsAvailable, driver, price } = ride;
   const [isLoading, setIsLoading] = useState(false);
+  const isFull = seatsAvailable === 0;
 
   const formattedDate = departureTime.toLocaleDateString(undefined, {
     weekday: 'short',
@@ -60,17 +60,19 @@ const RideCard: React.FC<RideCardProps> = ({ ride, requestStatus, refreshData, i
         return (
           <button 
             onClick={handleRequest}
-            disabled={isLoading}
-            className={`${commonClasses} bg-blue-500 text-white hover:bg-blue-600 disabled:bg-blue-300`}
+            disabled={isLoading || isFull}
+            className={`${commonClasses} bg-blue-500 text-white hover:bg-blue-600 disabled:bg-blue-300 disabled:cursor-not-allowed`}
           >
-            {isLoading ? 'Requesting...' : 'Request to Join'}
+            {isLoading ? 'Requesting...' : (isFull ? 'Full' : 'Request to Join')}
           </button>
         );
     }
   };
+  
+  const driverAvatar = driver.avatar_url || `https://picsum.photos/seed/${driver.id}/100/100`;
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm hover:shadow-md transition-shadow duration-300 border border-slate-200/80 divide-y divide-slate-100">
+    <div className={`bg-white rounded-2xl shadow-sm hover:shadow-md transition-shadow duration-300 border border-slate-200/80 divide-y divide-slate-100 ${isFull ? 'grayscale opacity-75' : ''}`}>
       <div className="p-6">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center">
           <div className="flex items-center space-x-4">
@@ -97,7 +99,7 @@ const RideCard: React.FC<RideCardProps> = ({ ride, requestStatus, refreshData, i
 
       <div className="px-6 py-4 flex justify-between items-center bg-slate-50/50 rounded-b-2xl">
         <div className="flex items-center space-x-3">
-          <img className="h-10 w-10 rounded-full object-cover" src={driver.avatar} alt={`Driver ${driver.name}`} />
+          <img className="h-10 w-10 rounded-full object-cover" src={driverAvatar} alt={`Driver ${driver.name}`} />
           <div>
             <p className="text-sm font-medium text-slate-900">{driver.name}</p>
             <div className="flex items-center">
@@ -116,7 +118,7 @@ const RideCard: React.FC<RideCardProps> = ({ ride, requestStatus, refreshData, i
                 <span className="pl-1 text-sm font-semibold text-slate-600">+{seatsAvailable - 4}</span>
               )}
             </div>
-            <p className="text-xs text-slate-500 mt-1">seats left</p>
+            <p className="text-xs text-slate-500 mt-1">{seatsAvailable} {seatsAvailable === 1 ? 'seat' : 'seats'} left</p>
           </div>
         </div>
       </div>

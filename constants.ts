@@ -19,7 +19,8 @@ export const INITIAL_RIDES: Ride[] = [
     driver: {
       id: 'driver-1',
       name: 'John D.',
-      avatar: 'https://picsum.photos/seed/john/100/100',
+      // FIX: Object literal may only specify known properties, and 'avatar' does not exist in type 'Driver'.
+      avatar_url: 'https://picsum.photos/seed/john/100/100',
       rating: 4.9,
     },
   },
@@ -33,7 +34,8 @@ export const INITIAL_RIDES: Ride[] = [
     driver: {
       id: 'driver-2',
       name: 'Sarah K.',
-      avatar: 'https://picsum.photos/seed/sarah/100/100',
+      // FIX: Object literal may only specify known properties, and 'avatar' does not exist in type 'Driver'.
+      avatar_url: 'https://picsum.photos/seed/sarah/100/100',
       rating: 4.8,
     },
   },
@@ -47,7 +49,8 @@ export const INITIAL_RIDES: Ride[] = [
     driver: {
       id: 'driver-3',
       name: 'Mike L.',
-      avatar: 'https://picsum.photos/seed/mike/100/100',
+      // FIX: Object literal may only specify known properties, and 'avatar' does not exist in type 'Driver'.
+      avatar_url: 'https://picsum.photos/seed/mike/100/100',
       rating: 5.0,
     },
   },
@@ -61,7 +64,8 @@ export const INITIAL_RIDES: Ride[] = [
     driver: {
       id: 'driver-4',
       name: 'Emily R.',
-      avatar: 'https://picsum.photos/seed/emily/100/100',
+      // FIX: Object literal may only specify known properties, and 'avatar' does not exist in type 'Driver'.
+      avatar_url: 'https://picsum.photos/seed/emily/100/100',
       rating: 4.9,
     },
   },

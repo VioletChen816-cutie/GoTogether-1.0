@@ -1,9 +1,9 @@
-
 import React, { useState, useMemo } from 'react';
 import { UserRole, Ride, Request } from '../types';
 import RoleSwitcher from './RoleSwitcher';
 import PassengerView from './PassengerView';
 import DriverView from './DriverView';
+import ProfileSettings from './ProfileSettings';
 import { useAuth } from '../providers/AuthProvider';
 
 interface AuthenticatedAppProps {
@@ -12,9 +12,10 @@ interface AuthenticatedAppProps {
     passengerRequests: Request[];
     driverRequests: Request[];
     refreshData: () => void;
+    setView: (view: 'app' | 'profile') => void;
 }
 
-const AuthenticatedApp: React.FC<AuthenticatedAppProps> = ({ allRides, onPostRide, passengerRequests, driverRequests, refreshData }) => {
+const AuthenticatedApp: React.FC<AuthenticatedAppProps & { view: 'app' | 'profile' }> = ({ allRides, onPostRide, passengerRequests, driverRequests, refreshData, view, setView }) => {
     const [role, setRole] = useState<UserRole>(UserRole.Passenger);
     const { user } = useAuth();
 
@@ -23,6 +24,9 @@ const AuthenticatedApp: React.FC<AuthenticatedAppProps> = ({ allRides, onPostRid
         return allRides.filter(r => r.driver?.id === user.id);
     }, [allRides, user]);
 
+    if (view === 'profile') {
+        return <ProfileSettings backToApp={() => setView('app')} />;
+    }
 
     return (
         <div>

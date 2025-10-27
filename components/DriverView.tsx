@@ -27,7 +27,21 @@ const DriverView: React.FC<DriverViewProps> = ({ onPostRide, postedRides, driver
   const [activeTab, setActiveTab] = useState(driverTabs[0].name);
 
   const sortedPostedRides = useMemo(() => {
-    return [...postedRides].sort((a,b) => a.departureTime.getTime() - b.departureTime.getTime());
+    return [...postedRides].sort((a, b) => {
+      // Primary sort: Move full rides (0 seats) to the bottom.
+      const aIsFull = a.seatsAvailable === 0;
+      const bIsFull = b.seatsAvailable === 0;
+  
+      if (aIsFull && !bIsFull) {
+        return 1; // a comes after b
+      }
+      if (!aIsFull && bIsFull) {
+        return -1; // a comes before b
+      }
+  
+      // Secondary sort: By departure time (earliest first).
+      return a.departureTime.getTime() - b.departureTime.getTime();
+    });
   }, [postedRides]);
 
   const handlePostRideSuccess = (success: boolean) => {

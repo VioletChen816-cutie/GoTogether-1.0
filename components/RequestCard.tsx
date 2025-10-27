@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Request, RequestStatus } from '../types';
 import { updateRequestStatus } from '../services/rideService';
@@ -45,6 +44,8 @@ const RequestCard: React.FC<RequestCardProps> = ({ request, viewAs, refreshData 
     hour: '2-digit', minute: '2-digit', hour12: true,
   });
 
+  const passengerAvatar = passenger.avatar_url || `https://picsum.photos/seed/${passenger.id}/100/100`;
+
   return (
     <div className="bg-white rounded-2xl shadow-sm overflow-hidden border border-slate-200">
       <div className="p-6">
@@ -71,7 +72,7 @@ const RequestCard: React.FC<RequestCardProps> = ({ request, viewAs, refreshData 
         {viewAs === 'driver' && status === RequestStatus.Pending && (
           <div className="border-t border-slate-100 mt-4 pt-4 flex items-center justify-between">
             <div className="flex items-center space-x-3">
-                <img className="h-10 w-10 rounded-full object-cover" src={passenger.avatar} alt={passenger.name} />
+                <img className="h-10 w-10 rounded-full object-cover" src={passengerAvatar} alt={passenger.name} />
                 <div>
                   <p className="text-sm font-medium text-slate-900">{passenger.name}</p>
                    <p className="text-sm text-slate-500">Wants to join your ride</p>

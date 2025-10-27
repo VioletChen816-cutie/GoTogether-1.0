@@ -1,4 +1,3 @@
-
 import { supabase } from '../lib/supabaseClient';
 import { Ride, Driver, Request, RequestStatus } from '../types';
 
@@ -11,21 +10,24 @@ const rideSelectQuery = `
   price,
   driver:profiles (
     id,
-    name:full_name
+    name:full_name,
+    avatar_url
   )
 `;
 
+const mapDriverData = (profile: any): Driver => {
+    if (!profile) {
+        return { id: 'unknown', name: 'Unknown Driver', avatar_url: null, rating: 0 };
+    }
+    return {
+        id: profile.id,
+        name: profile.name || 'No Name',
+        avatar_url: profile.avatar_url,
+        rating: 4.8, // placeholder
+    };
+};
+
 const mapRideData = (ride: any): Ride => {
-  const driverProfile = ride.driver;
-  const driver: Driver = driverProfile 
-    ? {
-        id: driverProfile.id,
-        name: driverProfile.name,
-        avatar: `https://picsum.photos/seed/${driverProfile.id}/100/100`,
-        rating: 4.8,
-      }
-    : { id: 'unknown', name: 'Unknown Driver', avatar: 'https://picsum.photos/seed/unknown/100/100', rating: 0 };
-  
   return {
     id: ride.id,
     from: ride.from,
@@ -33,7 +35,7 @@ const mapRideData = (ride: any): Ride => {
     departureTime: new Date(ride.departure_time),
     seatsAvailable: ride.seats_available,
     price: ride.price,
-    driver,
+    driver: mapDriverData(ride.driver),
   };
 };
 
@@ -43,6 +45,7 @@ export const getRides = async (): Promise<Ride[]> => {
   const { data, error } = await supabase
     .from('rides')
     .select(rideSelectQuery)
+    .gt('departure_time', new Date().toISOString())
     .order('departure_time', { ascending: true });
 
   if (error) {
@@ -112,8 +115,8 @@ const mapRequestData = (req: any): Request => ({
   ride: mapRideData(req.rides),
   passenger: {
     id: req.profiles.id,
-    name: req.profiles.full_name,
-    avatar: `https://picsum.photos/seed/${req.profiles.id}/100/100`,
+    name: req.profiles.full_name || 'No Name',
+    avatar_url: req.profiles.avatar_url,
     rating: 4.8,
   },
 });
@@ -123,21 +126,25 @@ export const getPassengerRequests = async (): Promise<Request[]> => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return [];
 
+    // FIX: The join on `profiles` was ambiguous. Added the `!passenger_id` hint
+    // to explicitly tell Supabase to join using the passenger_id foreign key,
+    // ensuring the correct passenger profile is fetched for the request.
     const { data, error } = await supabase
         .from('requests')
         .select(`
             id, created_at, status,
             rides ( ${rideSelectQuery} ),
-            profiles (id, full_name)
+            profiles!passenger_id (id, full_name, avatar_url)
         `)
         .eq('passenger_id', user.id)
         .order('created_at', { ascending: false });
 
     if (error) {
-        console.error('Error fetching passenger requests:', error);
+        console.error('Error fetching passenger requests:', error.message);
         throw error;
     }
-    return data.map(mapRequestData);
+    // Filter out requests where the associated ride or profile has been deleted.
+    return data.filter(req => req.rides && req.profiles).map(mapRequestData);
 };
 
 export const getDriverRequests = async (): Promise<Request[]> => {
@@ -154,36 +161,47 @@ export const getDriverRequests = async (): Promise<Request[]> => {
       return [];
     }
     
+    // The previous query used a hint with the FK constraint name, which was incorrect and caused the passenger profile join to fail.
+    // The correct way to disambiguate a join in Supabase is to use the foreign key COLUMN name in the hint.
+    // The query is updated to use `profiles!passenger_id(...)` to correctly fetch the passenger's profile for each request.
     const { data, error } = await supabase
         .from('requests')
         .select(`
             id, created_at, status,
             rides ( ${rideSelectQuery} ),
-            profiles (id, full_name)
+            profiles!passenger_id (id, full_name, avatar_url)
         `)
         .in('ride_id', rideIds.map(r => r.id))
         .order('created_at', { ascending: false });
     
     if (error) {
-        console.error('Error fetching driver requests:', error);
+        console.error('Error fetching driver requests:', error.message);
         throw error;
     }
-    return data.map(mapRequestData);
+    
+    // Filter out requests where the associated ride or passenger profile has been deleted.
+    // With the corrected query, the passenger profile is returned under the `profiles` key.
+    const validData = data.filter(req => req.rides && req.profiles);
+    
+    // The data is now in the correct shape for mapRequestData, no renaming needed.
+    return validData.map(mapRequestData);
 };
 
 
 export const updateRequestStatus = async (requestId: string, status: RequestStatus): Promise<any> => {
     if (!supabase) throw new Error('Supabase client is not initialized');
     
-    const { data, error } = await supabase
-        .from('requests')
-        .update({ status })
-        .eq('id', requestId)
-        .select();
+    // Call the PostgreSQL function to handle status update and seat decrement atomically.
+    const { error } = await supabase.rpc('handle_request_update', {
+        request_id_arg: requestId,
+        new_status: status,
+    });
 
     if (error) {
-        console.error('Error updating request status:', error);
+        console.error('Error updating request status:', error.message);
         throw error;
     }
-    return data;
+    // The RPC function doesn't return a value, so we just return a success indicator.
+    // The UI will refresh data separately.
+    return { success: true };
 };

@@ -1,8 +1,7 @@
-
 import React, { useState, useMemo } from 'react';
 import { Ride, Request, RequestStatus } from '../types';
-import { LOCATIONS } from '../constants';
 import RideCard from './RideCard';
+import { LOCATIONS } from '../constants';
 
 interface FindARideProps {
   rides: Ride[];
@@ -11,8 +10,8 @@ interface FindARideProps {
 }
 
 const FindARide: React.FC<FindARideProps> = ({ rides, passengerRequests, refreshData }) => {
-  const [from, setFrom] = useState('All Locations');
-  const [to, setTo] = useState('All Locations');
+  const [from, setFrom] = useState('');
+  const [to, setTo] = useState('');
   const [date, setDate] = useState('');
 
   const requestsMap = useMemo(() => {
@@ -25,16 +24,29 @@ const FindARide: React.FC<FindARideProps> = ({ rides, passengerRequests, refresh
 
   const filteredRides = useMemo(() => {
     return rides.filter(ride => {
-      const fromMatch = from === 'All Locations' || ride.from === from;
-      const toMatch = to === 'All Locations' || ride.to === to;
+      const fromMatch = !from || ride.from === from;
+      const toMatch = !to || ride.to === to;
       const dateMatch = !date || ride.departureTime.toISOString().split('T')[0] === date;
       return fromMatch && toMatch && dateMatch;
-    }).sort((a, b) => a.departureTime.getTime() - b.departureTime.getTime());
+    }).sort((a, b) => {
+      const aIsFull = a.seatsAvailable === 0;
+      const bIsFull = b.seatsAvailable === 0;
+  
+      if (aIsFull && !bIsFull) {
+        return 1; // a comes after b
+      }
+      if (!aIsFull && bIsFull) {
+        return -1; // a comes before b
+      }
+  
+      // Secondary sort: By departure time (earliest first).
+      return a.departureTime.getTime() - b.departureTime.getTime();
+    });
   }, [rides, from, to, date]);
 
   const handleClear = () => {
-    setFrom('All Locations');
-    setTo('All Locations');
+    setFrom('');
+    setTo('');
     setDate('');
   };
 
@@ -54,8 +66,8 @@ const FindARide: React.FC<FindARideProps> = ({ rides, passengerRequests, refresh
               onChange={(e) => setFrom(e.target.value)}
               className={inputBaseClasses}
             >
-              <option>All Locations</option>
-              {LOCATIONS.map(loc => <option key={`from-${loc}`}>{loc}</option>)}
+              <option value="">All Locations</option>
+              {LOCATIONS.map(loc => <option key={`from-${loc}`} value={loc}>{loc}</option>)}
             </select>
           </div>
           <div className="md:col-span-3">
@@ -66,8 +78,8 @@ const FindARide: React.FC<FindARideProps> = ({ rides, passengerRequests, refresh
               onChange={(e) => setTo(e.target.value)}
               className={inputBaseClasses}
             >
-              <option>All Locations</option>
-              {LOCATIONS.map(loc => <option key={`to-${loc}`}>{loc}</option>)}
+              <option value="">All Locations</option>
+              {LOCATIONS.map(loc => <option key={`to-${loc}`} value={loc}>{loc}</option>)}
             </select>
           </div>
           <div className="md:col-span-2">

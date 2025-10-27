@@ -80,7 +80,7 @@ const PostARide: React.FC<PostARideProps> = ({ onPostRide, onPostRideSuccess }) 
 
   return (
     <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-200">
-      <h2 className="text-2xl font-semibold text-slate-800 mb-6">Post a New Ride</h2>
+      <h2 className="text-2xl font-semibold text-slate-800 mb-6">Post a Ride</h2>
       <form onSubmit={handleSubmit} className="space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>

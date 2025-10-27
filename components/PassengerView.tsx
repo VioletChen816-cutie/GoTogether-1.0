@@ -18,7 +18,7 @@ const ClockIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w
 
 const PassengerView: React.FC<PassengerViewProps> = ({ allRides, passengerRequests, refreshData }) => {
   const passengerTabs = [
-    { name: 'Find a Ride', icon: <SearchIcon /> },
+    { name: 'Find Rides', icon: <SearchIcon /> },
     { name: 'My Requests', icon: <BellIcon /> },
     { name: 'My Trips', icon: <SuitcaseIcon /> },
     { name: 'Ride History', icon: <ClockIcon /> }
@@ -31,7 +31,7 @@ const PassengerView: React.FC<PassengerViewProps> = ({ allRides, passengerReques
     <div>
       <Tabs tabs={passengerTabs} activeTab={activeTab} onTabClick={setActiveTab} />
       <div className="mt-8">
-        {activeTab === 'Find a Ride' && <FindARide rides={allRides} passengerRequests={passengerRequests} refreshData={refreshData} />}
+        {activeTab === 'Find Rides' && <FindARide rides={allRides} passengerRequests={passengerRequests} refreshData={refreshData} />}
         {activeTab === 'My Requests' && (
           <div className="space-y-4">
             {passengerRequests.length > 0 ? (
@@ -40,7 +40,7 @@ const PassengerView: React.FC<PassengerViewProps> = ({ allRides, passengerReques
               <div className="text-center text-slate-500 py-16">
                   <BellIcon />
                   <p className="font-semibold mt-4">You haven't requested any rides.</p>
-                  <p className="text-sm">Use the "Find a Ride" tab to get started.</p>
+                  <p className="text-sm">Use the "Find Rides" tab to get started.</p>
               </div>
             )}
           </div>

@@ -20,7 +20,7 @@ const ClockIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w
 
 const DriverView: React.FC<DriverViewProps> = ({ onPostRide, postedRides, driverRequests, refreshData }) => {
   const driverTabs = [
-    { name: 'Post a Ride', icon: <PlusIcon /> },
+    { name: 'Post Ride', icon: <PlusIcon /> },
     { name: 'Ride Requests', icon: <UsersIcon /> },
     { name: 'My Posted Rides', icon: <ListIcon /> },
     { name: 'Ride History', icon: <ClockIcon /> }
@@ -61,7 +61,7 @@ const DriverView: React.FC<DriverViewProps> = ({ onPostRide, postedRides, driver
     <div>
       <Tabs tabs={driverTabs} activeTab={activeTab} onTabClick={setActiveTab} />
       <div className="mt-8">
-        {activeTab === 'Post a Ride' && <PostARide onPostRideSuccess={handlePostRideSuccess} onPostRide={onPostRide} />}
+        {activeTab === 'Post Ride' && <PostARide onPostRideSuccess={handlePostRideSuccess} onPostRide={onPostRide} />}
         
         {activeTab === 'Ride Requests' && (
            <div className="space-y-4">
@@ -85,7 +85,7 @@ const DriverView: React.FC<DriverViewProps> = ({ onPostRide, postedRides, driver
               <div className="text-center text-slate-500 py-16">
                  <ListIcon />
                 <p className="font-semibold mt-4">You haven't posted any rides yet.</p>
-                <p className="text-sm">Click on "Post a Ride" to get started.</p>
+                <p className="text-sm">Click on "Post Ride" to get started.</p>
               </div>
             )}
           </div>

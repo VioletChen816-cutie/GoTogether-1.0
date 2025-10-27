@@ -15,7 +15,7 @@ const StatusBadge: React.FC<{ status: RequestStatus }> = ({ status }) => {
     [RequestStatus.Pending]: "bg-yellow-100 text-yellow-800",
     [RequestStatus.Accepted]: "bg-green-100 text-green-800",
     [RequestStatus.Rejected]: "bg-red-100 text-red-800",
-    [RequestStatus.Cancelled]: "bg-gray-100 text-gray-800",
+    [RequestStatus.Cancelled]: "bg-slate-100 text-slate-800",
   };
   return <span className={`${baseClasses} ${statusClasses[status]}`}>{status}</span>;
 };
@@ -46,19 +46,19 @@ const RequestCard: React.FC<RequestCardProps> = ({ request, viewAs, refreshData 
   });
 
   return (
-    <div className="bg-white rounded-xl shadow-md overflow-hidden border border-gray-200">
+    <div className="bg-white rounded-2xl shadow-sm overflow-hidden border border-slate-200">
       <div className="p-6">
         {/* Ride Info */}
         <div className="flex justify-between items-center">
           <div>
             <div className="flex items-center space-x-3">
               <div className="text-center w-16">
-                <div className="font-semibold text-blue-600">{formattedTime}</div>
-                <div className="text-xs text-gray-500">{formattedDate}</div>
+                <div className="font-semibold text-blue-500">{formattedTime}</div>
+                <div className="text-xs text-slate-500">{formattedDate}</div>
               </div>
-              <div>
-                <p className="font-bold text-gray-800">{ride.from} to {ride.to}</p>
-                <p className="text-sm text-gray-500">
+              <div className="pl-3 border-l border-slate-200">
+                <p className="font-bold text-slate-800">{ride.from} to {ride.to}</p>
+                <p className="text-sm text-slate-500">
                   {viewAs === 'passenger' ? `Driver: ${ride.driver.name}` : `Passenger: ${passenger.name}`}
                 </p>
               </div>
@@ -69,26 +69,26 @@ const RequestCard: React.FC<RequestCardProps> = ({ request, viewAs, refreshData 
 
         {/* Actions for Driver */}
         {viewAs === 'driver' && status === RequestStatus.Pending && (
-          <div className="border-t mt-4 pt-4 flex items-center justify-between">
+          <div className="border-t border-slate-100 mt-4 pt-4 flex items-center justify-between">
             <div className="flex items-center space-x-3">
                 <img className="h-10 w-10 rounded-full object-cover" src={passenger.avatar} alt={passenger.name} />
                 <div>
-                  <p className="text-sm font-medium text-gray-900">{passenger.name}</p>
-                   <p className="text-sm text-gray-500">Wants to join your ride</p>
+                  <p className="text-sm font-medium text-slate-900">{passenger.name}</p>
+                   <p className="text-sm text-slate-500">Wants to join your ride</p>
                 </div>
             </div>
             <div className="flex space-x-2">
               <button
                 onClick={() => handleUpdateStatus(RequestStatus.Rejected)}
                 disabled={isLoading}
-                className="px-4 py-1.5 text-sm font-semibold bg-white text-gray-700 border border-gray-300 rounded-md hover:bg-gray-100 transition-colors disabled:opacity-50"
+                className="px-4 py-1.5 text-sm font-semibold bg-slate-100 text-slate-700 border border-slate-300 rounded-lg hover:bg-slate-200 transition-colors disabled:opacity-50"
               >
                 Reject
               </button>
               <button
                 onClick={() => handleUpdateStatus(RequestStatus.Accepted)}
                 disabled={isLoading}
-                className="px-4 py-1.5 text-sm font-semibold bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors disabled:bg-blue-300"
+                className="px-4 py-1.5 text-sm font-semibold bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors disabled:bg-blue-300"
               >
                 Accept
               </button>

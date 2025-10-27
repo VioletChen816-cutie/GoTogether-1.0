@@ -1,4 +1,3 @@
-
 import React, { useState, FormEvent } from 'react';
 import { Ride } from '../types';
 import { LOCATIONS } from '../constants';
@@ -15,6 +14,7 @@ const PostARide: React.FC<PostARideProps> = ({ onPostRide, onPostRideSuccess }) 
   const [seatsAvailable, setSeatsAvailable] = useState(1);
   const [price, setPrice] = useState(10);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
   const clearForm = () => {
@@ -29,6 +29,9 @@ const PostARide: React.FC<PostARideProps> = ({ onPostRide, onPostRideSuccess }) 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (isLoading) return;
+    
+    setError('');
+    setSuccess('');
 
     if (!departureTime) {
         setError('Please select a departure date and time.');
@@ -38,10 +41,10 @@ const PostARide: React.FC<PostARideProps> = ({ onPostRide, onPostRideSuccess }) 
         setError('Start and end locations cannot be the same.');
         return;
     }
-    setError('');
+
     setIsLoading(true);
 
-    const success = await onPostRide({
+    const ridePosted = await onPostRide({
       from,
       to,
       departureTime: new Date(departureTime),
@@ -50,54 +53,57 @@ const PostARide: React.FC<PostARideProps> = ({ onPostRide, onPostRideSuccess }) 
     });
     
     setIsLoading(false);
-    if (success) {
+    if (ridePosted) {
+      setSuccess('Ride posted successfully!');
       clearForm();
-      onPostRideSuccess(true);
+      setTimeout(() => onPostRideSuccess(true), 1000);
     }
   };
+  
+  const inputBaseClasses = "mt-1 block w-full pl-3 pr-10 py-2 text-base bg-slate-50 border-slate-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-lg";
 
   return (
-    <div className="bg-white p-6 md:p-8 rounded-xl shadow-md border border-gray-200">
-      <h2 className="text-2xl font-bold text-gray-800 mb-6">Post a New Ride</h2>
+    <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-200">
+      <h2 className="text-2xl font-semibold text-slate-800 mb-6">Post a New Ride</h2>
       <form onSubmit={handleSubmit} className="space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
-            <label htmlFor="post-from" className="block text-sm font-medium text-gray-700">From</label>
+            <label htmlFor="post-from" className="block text-sm font-medium text-slate-600">From</label>
             <select
               id="post-from"
               value={from}
               onChange={(e) => setFrom(e.target.value)}
-              className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
+              className={inputBaseClasses}
             >
               {LOCATIONS.map(loc => <option key={`post-from-${loc}`}>{loc}</option>)}
             </select>
           </div>
           <div>
-            <label htmlFor="post-to" className="block text-sm font-medium text-gray-700">To</label>
+            <label htmlFor="post-to" className="block text-sm font-medium text-slate-600">To</label>
             <select
               id="post-to"
               value={to}
               onChange={(e) => setTo(e.target.value)}
-              className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
+              className={inputBaseClasses}
             >
               {LOCATIONS.map(loc => <option key={`post-to-${loc}`}>{loc}</option>)}
             </select>
           </div>
         </div>
         <div>
-          <label htmlFor="departure-time" className="block text-sm font-medium text-gray-700">Departure Time</label>
+          <label htmlFor="departure-time" className="block text-sm font-medium text-slate-600">Departure Time</label>
           <input
             type="datetime-local"
             id="departure-time"
             value={departureTime}
             onChange={(e) => setDepartureTime(e.target.value)}
-            className="mt-1 block w-full border-gray-300 focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
+            className={`${inputBaseClasses} py-[7px]`}
             min={new Date().toISOString().slice(0, 16)}
           />
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label htmlFor="seats" className="block text-sm font-medium text-gray-700">Seats Available</label>
+              <label htmlFor="seats" className="block text-sm font-medium text-slate-600">Seats Available</label>
               <input
                 type="number"
                 id="seats"
@@ -105,26 +111,27 @@ const PostARide: React.FC<PostARideProps> = ({ onPostRide, onPostRideSuccess }) 
                 onChange={(e) => setSeatsAvailable(Math.max(1, parseInt(e.target.value, 10)))}
                 min="1"
                 max="8"
-                className="mt-1 block w-full border-gray-300 focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
+                className={`${inputBaseClasses} py-[7px]`}
               />
             </div>
             <div>
-              <label htmlFor="price" className="block text-sm font-medium text-gray-700">Price per seat ($)</label>
+              <label htmlFor="price" className="block text-sm font-medium text-slate-600">Price per seat ($)</label>
               <input
                 type="number"
                 id="price"
                 value={price}
                 onChange={(e) => setPrice(Math.max(0, parseInt(e.target.value, 10)))}
                 min="0"
-                className="mt-1 block w-full border-gray-300 focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
+                className={`${inputBaseClasses} py-[7px]`}
               />
             </div>
         </div>
         
         {error && <p className="text-red-500 text-sm">{error}</p>}
+        {success && <p className="text-green-500 text-sm">{success}</p>}
         
         <div className="pt-4">
-          <button type="submit" disabled={isLoading} className="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:bg-blue-300">
+          <button type="submit" disabled={isLoading} className="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-blue-500 hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:bg-blue-300">
             {isLoading ? 'Posting...' : 'Post Ride'}
           </button>
         </div>

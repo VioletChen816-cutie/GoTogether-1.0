@@ -5,14 +5,21 @@ const Header: React.FC = () => {
   const { user, signOut, openAuthModal } = useAuth();
 
   return (
-    <header className="text-center relative">
-      <div className="absolute top-0 right-0">
+    <header className="flex flex-col sm:flex-row justify-between items-center">
+      <div className="text-center sm:text-left">
+        <h1 className="text-4xl md:text-5xl font-bold text-slate-800">
+          Go<span className="text-blue-500">Together</span>
+        </h1>
+        <p className="mt-1 text-lg text-slate-500">Your friendly ridesharing community.</p>
+      </div>
+      <div className="mt-4 sm:mt-0">
         {user ? (
           <div className="flex items-center space-x-3">
-            <span className="text-sm text-gray-600 hidden sm:inline">{user.email}</span>
+            <span className="text-sm text-slate-600 hidden sm:inline">{user.email}</span>
+            <img className="h-9 w-9 rounded-full" src={`https://picsum.photos/seed/${user.id}/100/100`} alt="Your avatar" />
             <button
               onClick={signOut}
-              className="px-4 py-2 text-sm font-semibold bg-white text-gray-700 border border-gray-300 rounded-md hover:bg-gray-100 transition-colors"
+              className="px-4 py-2 text-sm font-semibold bg-white text-slate-700 border border-slate-300 rounded-lg hover:bg-slate-100 transition-colors"
             >
               Logout
             </button>
@@ -20,17 +27,11 @@ const Header: React.FC = () => {
         ) : (
           <button
             onClick={openAuthModal}
-            className="px-4 py-2 text-sm font-semibold bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+            className="px-5 py-2 text-sm font-semibold bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
           >
             Login / Sign Up
           </button>
         )}
-      </div>
-      <div className="pt-12 md:pt-0">
-        <h1 className="text-4xl md:text-5xl font-bold text-gray-800">
-          Go<span className="text-blue-600">Together</span>
-        </h1>
-        <p className="mt-2 text-lg text-gray-500">Your friendly ridesharing community.</p>
       </div>
     </header>
   );

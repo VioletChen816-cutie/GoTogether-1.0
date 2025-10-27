@@ -8,7 +8,7 @@ import { useAuth } from '../providers/AuthProvider';
 
 interface AuthenticatedAppProps {
     allRides: Ride[];
-    onPostRide: (newRide: Omit<Ride, 'id' | 'driver'>) => Promise<boolean>;
+    onPostRide: (newRide: Omit<Ride, 'id' | 'driver' | 'passengers'>) => Promise<boolean>;
     passengerRequests: Request[];
     driverRequests: Request[];
     refreshData: () => void;

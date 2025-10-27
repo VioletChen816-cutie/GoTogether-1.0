@@ -23,6 +23,8 @@ export const INITIAL_RIDES: Ride[] = [
       avatar_url: 'https://picsum.photos/seed/john/100/100',
       rating: 4.9,
     },
+    // FIX: Property 'passengers' is missing in type '{ id: string; from: string; to: string; departureTime: Date; seatsAvailable: number; price: number; driver: { id: string; name: string; avatar_url: string; rating: number; }; }' but required in type 'Ride'.
+    passengers: [],
   },
   {
     id: 'ride-2',
@@ -38,6 +40,8 @@ export const INITIAL_RIDES: Ride[] = [
       avatar_url: 'https://picsum.photos/seed/sarah/100/100',
       rating: 4.8,
     },
+    // FIX: Property 'passengers' is missing in type '{ id: string; from: string; to: string; departureTime: Date; seatsAvailable: number; price: number; driver: { id: string; name: string; avatar_url: string; rating: number; }; }' but required in type 'Ride'.
+    passengers: [],
   },
   {
     id: 'ride-3',
@@ -53,6 +57,8 @@ export const INITIAL_RIDES: Ride[] = [
       avatar_url: 'https://picsum.photos/seed/mike/100/100',
       rating: 5.0,
     },
+    // FIX: Property 'passengers' is missing in type '{ id: string; from: string; to: string; departureTime: Date; seatsAvailable: number; price: number; driver: { id: string; name: string; avatar_url: string; rating: number; }; }' but required in type 'Ride'.
+    passengers: [],
   },
    {
     id: 'ride-4',
@@ -68,5 +74,7 @@ export const INITIAL_RIDES: Ride[] = [
       avatar_url: 'https://picsum.photos/seed/emily/100/100',
       rating: 4.9,
     },
+    // FIX: Property 'passengers' is missing in type '{ id: string; from: string; to: string; departureTime: Date; seatsAvailable: number; price: number; driver: { id: string; name: string; avatar_url: string; rating: number; }; }' but required in type 'Ride'.
+    passengers: [],
   },
 ];

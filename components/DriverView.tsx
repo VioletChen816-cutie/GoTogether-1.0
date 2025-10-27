@@ -4,9 +4,10 @@ import Tabs from './Tabs';
 import PostARide from './PostARide';
 import RideCard from './RideCard';
 import RequestCard from './RequestCard';
+import { cancelRide } from '../services/rideService';
 
 interface DriverViewProps {
-  onPostRide: (newRide: Omit<Ride, 'id' | 'driver'>) => Promise<boolean>;
+  onPostRide: (newRide: Omit<Ride, 'id' | 'driver' | 'passengers'>) => Promise<boolean>;
   postedRides: Ride[];
   driverRequests: Request[];
   refreshData: () => void;
@@ -28,18 +29,6 @@ const DriverView: React.FC<DriverViewProps> = ({ onPostRide, postedRides, driver
 
   const sortedPostedRides = useMemo(() => {
     return [...postedRides].sort((a, b) => {
-      // Primary sort: Move full rides (0 seats) to the bottom.
-      const aIsFull = a.seatsAvailable === 0;
-      const bIsFull = b.seatsAvailable === 0;
-  
-      if (aIsFull && !bIsFull) {
-        return 1; // a comes after b
-      }
-      if (!aIsFull && bIsFull) {
-        return -1; // a comes before b
-      }
-  
-      // Secondary sort: By departure time (earliest first).
       return a.departureTime.getTime() - b.departureTime.getTime();
     });
   }, [postedRides]);
@@ -49,6 +38,19 @@ const DriverView: React.FC<DriverViewProps> = ({ onPostRide, postedRides, driver
       setActiveTab('My Posted Rides');
     }
   }
+
+  const handleCancelRide = async (rideId: string) => {
+    if (window.confirm('Are you sure you want to cancel this ride? This will notify all passengers and cannot be undone.')) {
+      try {
+        await cancelRide(rideId);
+        refreshData();
+      } catch (error: any) {
+        alert(`Failed to cancel ride: ${error.message}`);
+        console.error(error);
+      }
+    }
+  };
+
 
   const pendingRequests = useMemo(() => {
     return driverRequests.filter(r => r.status === 'pending');
@@ -78,7 +80,7 @@ const DriverView: React.FC<DriverViewProps> = ({ onPostRide, postedRides, driver
         {activeTab === 'My Posted Rides' && (
           <div className="space-y-4">
             {sortedPostedRides.length > 0 ? (
-              sortedPostedRides.map(ride => <RideCard key={ride.id} ride={ride} isDriverView={true} />)
+              sortedPostedRides.map(ride => <RideCard key={ride.id} ride={ride} isDriverView={true} onCancel={handleCancelRide} />)
             ) : (
               <div className="text-center text-slate-500 py-16">
                  <ListIcon />

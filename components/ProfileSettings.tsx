@@ -5,6 +5,7 @@ import { updateProfile, uploadAvatar } from '../services/profileService';
 const ProfileSettings: React.FC<{ backToApp: () => void }> = ({ backToApp }) => {
   const { user, profile, refreshProfile } = useAuth();
   const [fullName, setFullName] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState('');
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -14,6 +15,7 @@ const ProfileSettings: React.FC<{ backToApp: () => void }> = ({ backToApp }) => 
   useEffect(() => {
     if (profile) {
       setFullName(profile.full_name || '');
+      setPhoneNumber(profile.phone_number || '');
       setAvatarPreview(profile.avatar_url || null);
     }
   }, [profile]);
@@ -42,7 +44,11 @@ const ProfileSettings: React.FC<{ backToApp: () => void }> = ({ backToApp }) => 
         avatarUrl = await uploadAvatar(user.id, avatarFile);
       }
 
-      await updateProfile(user.id, { full_name: fullName, avatar_url: avatarUrl });
+      await updateProfile(user.id, { 
+        full_name: fullName, 
+        avatar_url: avatarUrl, 
+        phone_number: phoneNumber 
+      });
       await refreshProfile();
       setSuccess('Profile updated successfully!');
 
@@ -106,6 +112,18 @@ const ProfileSettings: React.FC<{ backToApp: () => void }> = ({ backToApp }) => 
             className={inputBaseClasses}
             placeholder="Your full name"
             required
+          />
+        </div>
+        
+        <div>
+          <label htmlFor="phone-number" className="block text-sm font-medium text-slate-600">Phone Number (Optional)</label>
+          <input
+            type="tel"
+            id="phone-number"
+            value={phoneNumber}
+            onChange={(e) => setPhoneNumber(e.target.value)}
+            className={inputBaseClasses}
+            placeholder="e.g., (123) 456-7890"
           />
         </div>
 

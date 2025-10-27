@@ -42,7 +42,7 @@ const App: React.FC = () => {
     fetchData();
   }, [fetchData]);
 
-  const handleAddRide = useCallback(async (newRide: Omit<Ride, 'id' | 'driver'>) => {
+  const handleAddRide = useCallback(async (newRide: Omit<Ride, 'id' | 'driver' | 'passengers'>) => {
     try {
       await addRide(newRide);
       await fetchData();

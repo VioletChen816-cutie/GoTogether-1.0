@@ -3,15 +3,19 @@ import { Ride, Driver, Request, RequestStatus } from '../types';
 
 const rideSelectQuery = `
   id,
-  from: "from",
-  to: "to",
+  from,
+  to,
   departure_time,
   seats_available,
   price,
-  driver:profiles (
+  driver:driver_id (
     id,
-    name:full_name,
+    full_name,
     avatar_url
+  ),
+  requests (
+    status,
+    passenger:passenger_id(id, full_name, avatar_url)
   )
 `;
 
@@ -21,13 +25,17 @@ const mapDriverData = (profile: any): Driver => {
     }
     return {
         id: profile.id,
-        name: profile.name || 'No Name',
+        name: profile.full_name || profile.name || 'No Name',
         avatar_url: profile.avatar_url,
         rating: 4.8, // placeholder
     };
 };
 
 const mapRideData = (ride: any): Ride => {
+  const acceptedPassengers = ride.requests
+    ?.filter((req: any) => req.status === 'accepted' && req.passenger)
+    .map((req: any) => mapDriverData(req.passenger)) || [];
+    
   return {
     id: ride.id,
     from: ride.from,
@@ -36,6 +44,7 @@ const mapRideData = (ride: any): Ride => {
     seatsAvailable: ride.seats_available,
     price: ride.price,
     driver: mapDriverData(ride.driver),
+    passengers: acceptedPassengers,
   };
 };
 
@@ -58,7 +67,7 @@ export const getRides = async (): Promise<Ride[]> => {
   return data.map(mapRideData);
 };
 
-export const addRide = async (newRide: Omit<Ride, 'id' | 'driver'>): Promise<any> => {
+export const addRide = async (newRide: Omit<Ride, 'id' | 'driver' | 'passengers'>): Promise<any> => {
   if (!supabase) throw new Error('Supabase client is not initialized');
 
   const { data: { user } } = await supabase.auth.getUser();
@@ -126,9 +135,6 @@ export const getPassengerRequests = async (): Promise<Request[]> => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return [];
 
-    // FIX: The join on `profiles` was ambiguous. Added the `!passenger_id` hint
-    // to explicitly tell Supabase to join using the passenger_id foreign key,
-    // ensuring the correct passenger profile is fetched for the request.
     const { data, error } = await supabase
         .from('requests')
         .select(`
@@ -143,7 +149,6 @@ export const getPassengerRequests = async (): Promise<Request[]> => {
         console.error('Error fetching passenger requests:', error.message);
         throw error;
     }
-    // Filter out requests where the associated ride or profile has been deleted.
     return data.filter(req => req.rides && req.profiles).map(mapRequestData);
 };
 
@@ -161,9 +166,6 @@ export const getDriverRequests = async (): Promise<Request[]> => {
       return [];
     }
     
-    // The previous query used a hint with the FK constraint name, which was incorrect and caused the passenger profile join to fail.
-    // The correct way to disambiguate a join in Supabase is to use the foreign key COLUMN name in the hint.
-    // The query is updated to use `profiles!passenger_id(...)` to correctly fetch the passenger's profile for each request.
     const { data, error } = await supabase
         .from('requests')
         .select(`
@@ -179,11 +181,7 @@ export const getDriverRequests = async (): Promise<Request[]> => {
         throw error;
     }
     
-    // Filter out requests where the associated ride or passenger profile has been deleted.
-    // With the corrected query, the passenger profile is returned under the `profiles` key.
     const validData = data.filter(req => req.rides && req.profiles);
-    
-    // The data is now in the correct shape for mapRequestData, no renaming needed.
     return validData.map(mapRequestData);
 };
 
@@ -191,7 +189,6 @@ export const getDriverRequests = async (): Promise<Request[]> => {
 export const updateRequestStatus = async (requestId: string, status: RequestStatus): Promise<any> => {
     if (!supabase) throw new Error('Supabase client is not initialized');
     
-    // Call the PostgreSQL function to handle status update and seat decrement atomically.
     const { error } = await supabase.rpc('handle_request_update', {
         request_id_arg: requestId,
         new_status: status,
@@ -201,7 +198,16 @@ export const updateRequestStatus = async (requestId: string, status: RequestStat
         console.error('Error updating request status:', error.message);
         throw error;
     }
-    // The RPC function doesn't return a value, so we just return a success indicator.
-    // The UI will refresh data separately.
     return { success: true };
+};
+
+export const cancelRide = async (rideId: string): Promise<void> => {
+    if (!supabase) throw new Error('Supabase client is not initialized');
+    const { error } = await supabase.rpc('cancel_ride', {
+        ride_id_arg: rideId
+    });
+    if (error) {
+        console.error('Error cancelling ride:', error.message);
+        throw error;
+    }
 };

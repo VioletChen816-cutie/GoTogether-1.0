@@ -14,6 +14,7 @@ export interface Profile {
   updated_at: string;
   full_name: string;
   avatar_url: string | null;
+  phone_number: string | null;
 }
 
 export interface Driver {
@@ -31,6 +32,7 @@ export interface Ride {
   seatsAvailable: number;
   driver: Driver;
   price: number;
+  passengers: Driver[];
 }
 
 export enum RequestStatus {

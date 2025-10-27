@@ -1,19 +1,67 @@
 import React, { useState } from 'react';
-import { Ride, RequestStatus } from '../types';
+import { Ride, RequestStatus, Driver } from '../types';
 import { useAuth } from '../providers/AuthProvider';
 import { requestRide } from '../services/rideService';
+import ProfileModal from './ProfileModal';
 
 interface RideCardProps {
   ride: Ride;
   requestStatus?: RequestStatus;
   refreshData?: () => void;
   isDriverView?: boolean;
+  onCancel?: (rideId: string) => void;
 }
 
-const RideCard: React.FC<RideCardProps> = ({ ride, requestStatus, refreshData, isDriverView = false }) => {
+interface PassengerListProps {
+  passengers: Driver[];
+  onProfileClick: (profile: Driver) => void;
+}
+
+const PassengerList: React.FC<PassengerListProps> = ({ passengers, onProfileClick }) => {
+  if (passengers.length === 0) {
+    return (
+       <div className="text-right">
+          <p className="text-sm font-medium text-slate-500">No passengers yet</p>
+      </div>
+    );
+  }
+  
+  return (
+    <div className="flex flex-col items-end">
+      <div className="flex items-center -space-x-3">
+        {passengers.slice(0, 3).map(p => (
+           <button
+            key={p.id}
+            type="button"
+            onClick={() => onProfileClick(p)}
+            className="focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 rounded-full"
+           >
+            <img
+              className="h-9 w-9 rounded-full object-cover border-2 border-white"
+              src={p.avatar_url || `https://picsum.photos/seed/${p.id}/100/100`}
+              alt={p.name}
+              title={p.name}
+            />
+          </button>
+        ))}
+         {passengers.length > 3 && (
+          <div className="h-9 w-9 rounded-full bg-slate-200 flex items-center justify-center border-2 border-white">
+            <span className="text-xs font-semibold text-slate-600">+{passengers.length - 3}</span>
+          </div>
+        )}
+      </div>
+      <p className="text-xs text-slate-500 mt-1">{passengers.length} confirmed</p>
+    </div>
+  );
+};
+
+
+const RideCard: React.FC<RideCardProps> = ({ ride, requestStatus, refreshData, isDriverView = false, onCancel }) => {
   const { user, openAuthModal } = useAuth();
-  const { from, to, departureTime, seatsAvailable, driver, price } = ride;
+  const { from, to, departureTime, seatsAvailable, driver, price, passengers } = ride;
   const [isLoading, setIsLoading] = useState(false);
+  const [isCancelling, setIsCancelling] = useState(false);
+  const [viewingProfile, setViewingProfile] = useState<Driver | null>(null);
   const isFull = seatsAvailable === 0;
 
   const formattedDate = departureTime.toLocaleDateString(undefined, {
@@ -36,15 +84,36 @@ const RideCard: React.FC<RideCardProps> = ({ ride, requestStatus, refreshData, i
     try {
       await requestRide(ride.id);
       refreshData?.();
-    } catch (error: any) {
+    } catch (error: any)
+ {
       alert(error.message);
     } finally {
       setIsLoading(false);
     }
   };
+  
+  const handleCancel = async () => {
+    setIsCancelling(true);
+    try {
+      await onCancel?.(ride.id);
+      // No need to call refreshData here as the parent component (DriverView) does it.
+    } finally {
+       setIsCancelling(false);
+    }
+  }
 
   const getButtonState = () => {
-    if (isDriverView) return null;
+    if (isDriverView) {
+      return (
+        <button
+          onClick={handleCancel}
+          disabled={isCancelling}
+          className="px-5 py-2 rounded-full font-semibold transition-colors duration-200 whitespace-nowrap text-sm bg-red-100 text-red-700 hover:bg-red-200 disabled:opacity-50"
+        >
+          {isCancelling ? 'Cancelling...' : 'Cancel Ride'}
+        </button>
+      )
+    };
     if (user?.id === ride.driver.id) return <span className="text-sm font-semibold text-slate-500 px-5 py-2">Your Ride</span>
 
     const commonClasses = "px-5 py-2 rounded-full font-semibold transition-colors duration-200 whitespace-nowrap text-sm";
@@ -72,57 +141,62 @@ const RideCard: React.FC<RideCardProps> = ({ ride, requestStatus, refreshData, i
   const driverAvatar = driver.avatar_url || `https://picsum.photos/seed/${driver.id}/100/100`;
 
   return (
-    <div className={`bg-white rounded-2xl shadow-sm hover:shadow-md transition-shadow duration-300 border border-slate-200/80 divide-y divide-slate-100 ${isFull ? 'grayscale opacity-75' : ''}`}>
-      <div className="p-6">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center">
-          <div className="flex items-center space-x-4">
-             <div className="text-center w-20">
-                  <div className="text-lg font-semibold text-blue-500">{formattedTime}</div>
-                  <div className="text-xs text-slate-500">{formattedDate}</div>
+    <>
+      <div className={`bg-white rounded-2xl shadow-sm hover:shadow-md transition-shadow duration-300 border border-slate-200/80 divide-y divide-slate-100 ${isFull && !isDriverView ? 'grayscale opacity-75' : ''}`}>
+        <div className="p-6">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center">
+            <div className="flex items-center space-x-4">
+               <div className="text-center w-20">
+                    <div className="text-lg font-semibold text-blue-500">{formattedTime}</div>
+                    <div className="text-xs text-slate-500">{formattedDate}</div>
+                </div>
+              <div className="border-l border-slate-200 pl-4">
+                <p className="font-bold text-xl text-slate-800">{from}</p>
+                <p className="text-slate-500 text-sm">to</p>
+                <p className="font-bold text-xl text-slate-800">{to}</p>
               </div>
-            <div className="border-l border-slate-200 pl-4">
-              <p className="font-bold text-xl text-slate-800">{from}</p>
-              <p className="text-slate-500 text-sm">to</p>
-              <p className="font-bold text-xl text-slate-800">{to}</p>
+            </div>
+
+            <div className="w-full md:w-auto mt-4 md:mt-0 flex flex-row md:flex-col items-center justify-between">
+               <div className="text-center md:mb-4">
+                  <p className="text-3xl font-bold text-blue-500">${price}</p>
+                  <p className="text-sm text-slate-500 -mt-1">per seat</p>
+               </div>
+               {getButtonState()}
             </div>
           </div>
+        </div>
 
-          <div className="w-full md:w-auto mt-4 md:mt-0 flex flex-row md:flex-col items-center justify-between">
-             <div className="text-center md:mb-4">
-                <p className="text-3xl font-bold text-blue-500">${price}</p>
-                <p className="text-sm text-slate-500 -mt-1">per seat</p>
-             </div>
-             {getButtonState()}
+        <div className="px-6 py-4 flex justify-between items-center bg-slate-50/50 rounded-b-2xl">
+          <div className="flex items-center space-x-3">
+            <img className="h-10 w-10 rounded-full object-cover" src={driverAvatar} alt={`Driver ${driver.name}`} />
+            <div>
+              <p className="text-sm font-medium text-slate-900">{driver.name}</p>
+              <div className="flex items-center">
+                <svg className="w-4 h-4 text-yellow-400 fill-current" xmlns="http://www.w.org/2000/svg" viewBox="0 0 20 20"><path d="M10 15l-5.878 3.09 1.123-6.545L.489 6.91l6.572-.955L10 0l2.939 5.955 6.572.955-4.756 4.635 1.123 6.545z"/></svg>
+                <p className="ml-1 text-sm text-slate-500">{driver.rating.toFixed(1)}</p>
+              </div>
+            </div>
           </div>
+          {isDriverView ? <PassengerList passengers={passengers} onProfileClick={setViewingProfile} /> : (
+              <div className="text-right">
+                <div className="flex items-center justify-end" title={`${seatsAvailable} seat${seatsAvailable !== 1 ? 's' : ''} left`} aria-label={`${seatsAvailable} seats left`}>
+                  <div className="flex items-center space-x-1">
+                    {Array.from({ length: Math.min(seatsAvailable, 4) }).map((_, index) => (
+                      <svg key={index} className="w-6 h-6 text-slate-400" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd"></path></svg>
+                    ))}
+                    {seatsAvailable > 4 && (
+                      <span className="pl-1 text-sm font-semibold text-slate-600">+{seatsAvailable - 4}</span>
+                    )}
+                  </div>
+                </div>
+                <p className="text-xs text-slate-500 mt-1">{seatsAvailable} {seatsAvailable === 1 ? 'seat' : 'seats'} left</p>
+              </div>
+          )}
         </div>
       </div>
-
-      <div className="px-6 py-4 flex justify-between items-center bg-slate-50/50 rounded-b-2xl">
-        <div className="flex items-center space-x-3">
-          <img className="h-10 w-10 rounded-full object-cover" src={driverAvatar} alt={`Driver ${driver.name}`} />
-          <div>
-            <p className="text-sm font-medium text-slate-900">{driver.name}</p>
-            <div className="flex items-center">
-              <svg className="w-4 h-4 text-yellow-400 fill-current" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M10 15l-5.878 3.09 1.123-6.545L.489 6.91l6.572-.955L10 0l2.939 5.955 6.572.955-4.756 4.635 1.123 6.545z"/></svg>
-              <p className="ml-1 text-sm text-slate-500">{driver.rating.toFixed(1)}</p>
-            </div>
-          </div>
-        </div>
-        <div className="text-right">
-          <div className="flex items-center justify-end" title={`${seatsAvailable} seat${seatsAvailable > 1 ? 's' : ''} left`} aria-label={`${seatsAvailable} seats left`}>
-            <div className="flex items-center space-x-1">
-              {Array.from({ length: Math.min(seatsAvailable, 4) }).map((_, index) => (
-                <svg key={index} className="w-6 h-6 text-slate-400" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd"></path></svg>
-              ))}
-              {seatsAvailable > 4 && (
-                <span className="pl-1 text-sm font-semibold text-slate-600">+{seatsAvailable - 4}</span>
-              )}
-            </div>
-            <p className="text-xs text-slate-500 mt-1">{seatsAvailable} {seatsAvailable === 1 ? 'seat' : 'seats'} left</p>
-          </div>
-        </div>
-      </div>
-    </div>
+      <ProfileModal profile={viewingProfile} onClose={() => setViewingProfile(null)} />
+    </>
   );
 };
 

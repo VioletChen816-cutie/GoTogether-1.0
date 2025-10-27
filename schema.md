@@ -15,6 +15,7 @@ DROP POLICY IF EXISTS "Users can update their own avatars." ON storage.objects;
 DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 DROP FUNCTION IF EXISTS public.handle_new_user();
 DROP FUNCTION IF EXISTS public.handle_request_update(uuid, request_status);
+DROP FUNCTION IF EXISTS public.cancel_ride(uuid);
 DROP TABLE IF EXISTS public.requests;
 DROP TABLE IF EXISTS public.rides;
 DROP TABLE IF EXISTS public.profiles;
@@ -28,7 +29,8 @@ create table profiles (
   id uuid references auth.users not null primary key,
   updated_at timestamp with time zone,
   full_name text,
-  avatar_url text
+  avatar_url text,
+  phone_number text
 );
 
 -- 2. Set up Row Level Security (RLS) for profiles
@@ -64,8 +66,8 @@ create policy "Users can update their own avatars." on storage.objects
 create function public.handle_new_user()
 returns trigger as $$
 begin
-  insert into public.profiles (id, full_name, avatar_url)
-  values (new.id, new.raw_user_meta_data->>'full_name', new.raw_user_meta_data->>'avatar_url');
+  insert into public.profiles (id, full_name, avatar_url, phone_number)
+  values (new.id, new.raw_user_meta_data->>'full_name', new.raw_user_meta_data->>'avatar_url', null);
   return new;
 end;
 $$ language plpgsql security definer;
@@ -146,7 +148,7 @@ create policy "Drivers can update status of requests for their rides." on reques
         exists (
             select 1 from rides where rides.id = requests.ride_id and rides.driver_id = auth.uid()
         )
-    ) with check ( status in ('accepted', 'rejected') );
+    ) with check ( status in ('accepted', 'rejected', 'cancelled') );
 
 create policy "Passengers can cancel their pending requests." on requests
     for update to authenticated using (auth.uid() = passenger_id)
@@ -157,24 +159,21 @@ create or replace function public.handle_request_update(request_id_arg uuid, new
 returns void as $$
 declare
   _ride_id uuid;
+  _current_status request_status;
   _updated_ride_id uuid;
 begin
-  -- Handle non-acceptance statuses first. They don't affect seats.
-  if new_status <> 'accepted' then
-    update public.requests
-    set status = new_status
-    where id = request_id_arg;
+  -- Get the current state of the request
+  select ride_id, status into _ride_id, _current_status
+  from public.requests
+  where id = request_id_arg;
+
+  -- If no request found, exit.
+  if not found then
     return;
   end if;
 
-  -- Logic for accepting a request
-  -- Find the ride_id for the pending request
-  select ride_id into _ride_id
-  from public.requests
-  where id = request_id_arg and status = 'pending';
-
-  -- If a pending request was found
-  if found then
+  -- Scenario 1: A pending request is being accepted
+  if _current_status = 'pending' and new_status = 'accepted' then
     -- Atomically decrement seats IF available, and return the id of the ride that was updated.
     update public.rides
     set seats_available = seats_available - 1
@@ -187,14 +186,64 @@ begin
       update public.requests
       set status = 'accepted'
       where id = request_id_arg;
+      
+      -- Check if the ride is now full.
+      if (select seats_available from public.rides where id = _ride_id) = 0 then
+        -- If full, reject all other pending requests for this ride.
+        update public.requests
+        set status = 'rejected'
+        where ride_id = _ride_id and status = 'pending';
+      end if;
     else
       -- No seats were available. The ride was not updated.
-      -- To prevent overbooking, we should reject this request instead of leaving it pending.
+      -- Reject this request to prevent overbooking.
       update public.requests
       set status = 'rejected'
       where id = request_id_arg;
     end if;
+    return;
   end if;
-  -- If no pending request was found (e.g., already handled), do nothing.
+
+  -- Scenario 2: An accepted request is being cancelled (by the driver)
+  if _current_status = 'accepted' and new_status = 'cancelled' then
+    -- Increment the seat count on the ride
+    update public.rides
+    set seats_available = seats_available + 1
+    where id = _ride_id;
+
+    -- Update the request status
+    update public.requests
+    set status = 'cancelled'
+    where id = request_id_arg;
+    return;
+  end if;
+
+  -- Default case for other transitions (e.g., pending -> rejected, pending -> cancelled)
+  -- that don't affect seat count.
+  update public.requests
+  set status = new_status
+  where id = request_id_arg;
+
 end;
 $$ language plpgsql security definer;
+
+-- 11. Create Function for Driver to Cancel a Ride
+create or replace function public.cancel_ride(ride_id_arg uuid)
+returns void as $$
+begin
+  -- Ensure the current user is the driver of the ride
+  if not exists (select 1 from public.rides where id = ride_id_arg and driver_id = auth.uid()) then
+    raise exception 'Only the driver can cancel this ride.';
+  end if;
+
+  -- "Notify" passengers by cancelling their requests
+  update public.requests
+  set status = 'cancelled'
+  where ride_id = ride_id_arg and status in ('pending', 'accepted');
+
+  -- Delete the ride
+  delete from public.rides
+  where id = ride_id_arg;
+end;
+$$ language plpgsql security definer;
+```

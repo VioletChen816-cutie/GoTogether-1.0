@@ -3,7 +3,7 @@ import { Ride } from '../types';
 import { LOCATIONS } from '../constants';
 
 interface PostARideProps {
-  onPostRide: (newRide: Omit<Ride, 'id' | 'driver'>) => Promise<boolean>;
+  onPostRide: (newRide: Omit<Ride, 'id' | 'driver' | 'passengers'>) => Promise<boolean>;
   onPostRideSuccess: (success: boolean) => void;
 }
 

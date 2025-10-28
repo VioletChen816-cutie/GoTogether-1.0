@@ -1,4 +1,4 @@
-import { Ride } from './types';
+import { Ride, RideStatus } from './types';
 
 export const LOCATIONS: string[] = [
   'Collegetown Ithaca',
@@ -19,12 +19,14 @@ export const INITIAL_RIDES: Ride[] = [
     driver: {
       id: 'driver-1',
       name: 'John D.',
-      // FIX: Object literal may only specify known properties, and 'avatar' does not exist in type 'Driver'.
       avatar_url: 'https://picsum.photos/seed/john/100/100',
-      rating: 4.9,
+      // FIX: 'rating' does not exist on type 'Driver'. Changed to 'average_rating' and added 'rating_count' to conform to the type.
+      average_rating: 4.9,
+      rating_count: 25,
     },
-    // FIX: Property 'passengers' is missing in type '{ id: string; from: string; to: string; departureTime: Date; seatsAvailable: number; price: number; driver: { id: string; name: string; avatar_url: string; rating: number; }; }' but required in type 'Ride'.
     passengers: [],
+    status: RideStatus.Active,
+    ratings: [],
   },
   {
     id: 'ride-2',
@@ -36,12 +38,14 @@ export const INITIAL_RIDES: Ride[] = [
     driver: {
       id: 'driver-2',
       name: 'Sarah K.',
-      // FIX: Object literal may only specify known properties, and 'avatar' does not exist in type 'Driver'.
       avatar_url: 'https://picsum.photos/seed/sarah/100/100',
-      rating: 4.8,
+      // FIX: 'rating' does not exist on type 'Driver'. Changed to 'average_rating' and added 'rating_count' to conform to the type.
+      average_rating: 4.8,
+      rating_count: 61,
     },
-    // FIX: Property 'passengers' is missing in type '{ id: string; from: string; to: string; departureTime: Date; seatsAvailable: number; price: number; driver: { id: string; name: string; avatar_url: string; rating: number; }; }' but required in type 'Ride'.
     passengers: [],
+    status: RideStatus.Active,
+    ratings: [],
   },
   {
     id: 'ride-3',
@@ -53,12 +57,14 @@ export const INITIAL_RIDES: Ride[] = [
     driver: {
       id: 'driver-3',
       name: 'Mike L.',
-      // FIX: Object literal may only specify known properties, and 'avatar' does not exist in type 'Driver'.
       avatar_url: 'https://picsum.photos/seed/mike/100/100',
-      rating: 5.0,
+      // FIX: 'rating' does not exist on type 'Driver'. Changed to 'average_rating' and added 'rating_count' to conform to the type.
+      average_rating: 5.0,
+      rating_count: 12,
     },
-    // FIX: Property 'passengers' is missing in type '{ id: string; from: string; to: string; departureTime: Date; seatsAvailable: number; price: number; driver: { id: string; name: string; avatar_url: string; rating: number; }; }' but required in type 'Ride'.
     passengers: [],
+    status: RideStatus.Active,
+    ratings: [],
   },
    {
     id: 'ride-4',
@@ -70,11 +76,13 @@ export const INITIAL_RIDES: Ride[] = [
     driver: {
       id: 'driver-4',
       name: 'Emily R.',
-      // FIX: Object literal may only specify known properties, and 'avatar' does not exist in type 'Driver'.
       avatar_url: 'https://picsum.photos/seed/emily/100/100',
-      rating: 4.9,
+      // FIX: 'rating' does not exist on type 'Driver'. Changed to 'average_rating' and added 'rating_count' to conform to the type.
+      average_rating: 4.9,
+      rating_count: 48,
     },
-    // FIX: Property 'passengers' is missing in type '{ id: string; from: string; to: string; departureTime: Date; seatsAvailable: number; price: number; driver: { id: string; name: string; avatar_url: string; rating: number; }; }' but required in type 'Ride'.
     passengers: [],
+    status: RideStatus.Active,
+    ratings: [],
   },
 ];

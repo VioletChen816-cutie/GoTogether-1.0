@@ -5,23 +5,48 @@ export enum UserRole {
   Driver = 'Driver',
 }
 
-// FIX: Removed the 'user' property from the Profile interface.
-// The getProfile service does not return a 'user' object, which was causing
-// a type mismatch. The 'User' import from '@supabase/supabase-js' is now unused
-// and should be removed by a linter, but is kept here to avoid breaking other potential usages if any.
 export interface Profile {
   id: string;
   updated_at: string;
   full_name: string;
   avatar_url: string | null;
   phone_number: string | null;
+  average_rating: number;
+  rating_count: number;
 }
 
 export interface Driver {
   id: string;
   name: string;
   avatar_url: string | null;
+  average_rating: number;
+  rating_count: number;
+}
+
+export enum RideStatus {
+  Active = 'active',
+  Cancelled = 'cancelled',
+  Completed = 'completed',
+}
+
+export interface Rating {
+  rater_id: string;
+  ratee_id: string;
   rating: number;
+}
+
+export interface CarInfo {
+  make: string;
+  model: string;
+  year?: number;
+  color?: string;
+  license_plate: string;
+}
+
+export interface Car extends CarInfo {
+  id: string;
+  owner_id: string;
+  is_default: boolean;
 }
 
 export interface Ride {
@@ -33,6 +58,9 @@ export interface Ride {
   driver: Driver;
   price: number;
   passengers: Driver[];
+  status: RideStatus;
+  ratings: Rating[];
+  car?: CarInfo;
 }
 
 export enum RequestStatus {
@@ -48,4 +76,39 @@ export interface Request {
   ride: Ride;
   passenger: Driver; // Re-using Driver type for public profile info
   status: RequestStatus;
+}
+
+export type NotificationType = {
+  message: string;
+  type: 'success' | 'info' | 'error';
+};
+
+export interface UserToRate {
+  id: string;
+  name: string;
+  avatar_url: string | null;
+}
+
+export enum NotificationEnumType {
+  NewRequest = 'NEW_REQUEST',
+  RequestAccepted = 'REQUEST_ACCEPTED',
+  RequestRejected = 'REQUEST_REJECTED',
+  PassengerCancelled = 'PASSENGER_CANCELLED',
+  DriverCancelledRide = 'DRIVER_CANCELLED_RIDE',
+  BookingCancelled = 'BOOKING_CANCELLED',
+}
+
+export interface AppNotification {
+  id: string;
+  created_at: string;
+  user_id: string;
+  ride_id: string | null;
+  request_id: string | null;
+  type: NotificationEnumType;
+  message: string;
+  is_read: boolean;
+  rides?: {
+    from: string;
+    to: string;
+  }
 }

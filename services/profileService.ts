@@ -1,11 +1,11 @@
 import { supabase } from '../lib/supabaseClient';
-import { Profile } from '../types';
+import { Profile, Car, CarInfo } from '../types';
 
 export const getProfile = async (userId: string): Promise<Profile | null> => {
   if (!supabase) throw new Error('Supabase client not initialized');
   const { data, error } = await supabase
     .from('profiles')
-    .select('id, updated_at, full_name, avatar_url, phone_number')
+    .select('id, updated_at, full_name, avatar_url, phone_number, average_rating, rating_count')
     .eq('id', userId)
     .single();
 
@@ -84,3 +84,86 @@ export const uploadAvatar = async (userId: string, file: File): Promise<string> 
 
     return data.publicUrl;
 }
+
+// --- Car Management ---
+
+const handleSupabaseError = (error: any, context: string) => {
+    if (!error) return;
+    console.error(`Error ${context}:`, error);
+    let message = 'An unknown database error occurred.';
+    if (typeof error.message === 'string' && error.message) {
+        message = error.message;
+    } else if (typeof error.details === 'string' && error.details) {
+        message = error.details; // Fallback to details if message is not helpful
+    }
+    throw new Error(message);
+};
+
+export const getCarsForUser = async (userId: string): Promise<Car[]> => {
+    if (!supabase) throw new Error('Supabase client not initialized');
+    const { data, error } = await supabase
+        .from('cars')
+        .select('*')
+        .eq('owner_id', userId)
+        .order('is_default', { ascending: false })
+        .order('created_at', { ascending: true });
+
+    if (error) {
+        console.error('Error fetching cars:', error);
+        throw error;
+    }
+    return data || [];
+};
+
+export const addCar = async (carData: Omit<Car, 'id' | 'owner_id' | 'is_default'>): Promise<Car> => {
+    if (!supabase) throw new Error('Supabase client not initialized');
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('User must be logged in');
+
+    const { data, error } = await supabase
+        .from('cars')
+        .insert({ ...carData, owner_id: user.id })
+        .select()
+        .single();
+    
+    if (error) {
+        handleSupabaseError(error, 'adding car');
+    }
+    return data;
+};
+
+export const updateCar = async (carId: string, carData: CarInfo): Promise<Car> => {
+    if (!supabase) throw new Error('Supabase client not initialized');
+    const { data, error } = await supabase
+        .from('cars')
+        .update(carData)
+        .eq('id', carId)
+        .select()
+        .single();
+    
+    if (error) {
+        handleSupabaseError(error, 'updating car');
+    }
+    return data;
+};
+
+export const deleteCar = async (carId: string): Promise<void> => {
+    if (!supabase) throw new Error('Supabase client not initialized');
+    const { error } = await supabase
+        .from('cars')
+        .delete()
+        .eq('id', carId);
+
+    if (error) {
+        handleSupabaseError(error, 'deleting car');
+    }
+};
+
+export const setDefaultCar = async (carId: string): Promise<void> => {
+    if (!supabase) throw new Error('Supabase client not initialized');
+    const { error } = await supabase.rpc('set_default_car', { car_id_arg: carId });
+
+    if (error) {
+        handleSupabaseError(error, 'setting default car');
+    }
+};

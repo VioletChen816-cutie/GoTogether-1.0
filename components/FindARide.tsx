@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Ride, Request, RequestStatus } from '../types';
+import { Ride, Request, RequestStatus, RideStatus } from '../types';
 import RideCard from './RideCard';
 import { LOCATIONS } from '../constants';
 
@@ -29,17 +29,19 @@ const FindARide: React.FC<FindARideProps> = ({ rides, passengerRequests, refresh
       const dateMatch = !date || ride.departureTime.toISOString().split('T')[0] === date;
       return fromMatch && toMatch && dateMatch;
     }).sort((a, b) => {
+      // Primary sort: Move cancelled rides to the bottom.
+      const aIsCancelled = a.status === RideStatus.Cancelled;
+      const bIsCancelled = b.status === RideStatus.Cancelled;
+      if (aIsCancelled && !bIsCancelled) return 1;
+      if (!aIsCancelled && bIsCancelled) return -1;
+
+      // Secondary sort: Among active rides, move full rides down.
       const aIsFull = a.seatsAvailable === 0;
       const bIsFull = b.seatsAvailable === 0;
-  
-      if (aIsFull && !bIsFull) {
-        return 1; // a comes after b
-      }
-      if (!aIsFull && bIsFull) {
-        return -1; // a comes before b
-      }
-  
-      // Secondary sort: By departure time (earliest first).
+      if (aIsFull && !bIsFull) return 1;
+      if (!aIsFull && bIsFull) return -1;
+
+      // Tertiary sort: By departure time (earliest first).
       return a.departureTime.getTime() - b.departureTime.getTime();
     });
   }, [rides, from, to, date]);

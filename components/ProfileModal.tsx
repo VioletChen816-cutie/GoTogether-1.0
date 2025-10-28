@@ -31,8 +31,14 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ profile, onClose }) => {
         <h3 className="text-xl font-bold text-slate-800">{profile.name}</h3>
 
         <div className="mt-2 flex items-center justify-center">
-            <svg className="w-5 h-5 text-yellow-400 fill-current" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M10 15l-5.878 3.09 1.123-6.545L.489 6.91l6.572-.955L10 0l2.939 5.955 6.572.955-4.756 4.635 1.123 6.545z"/></svg>
-            <p className="ml-1 text-md text-slate-600">{profile.rating.toFixed(1)} Rating</p>
+          {profile.rating_count > 0 ? (
+            <>
+              <svg className="w-5 h-5 text-yellow-400 fill-current" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M10 15l-5.878 3.09 1.123-6.545L.489 6.91l6.572-.955L10 0l2.939 5.955 6.572.955-4.756 4.635 1.123 6.545z"/></svg>
+              <p className="ml-1 text-md text-slate-600">{profile.average_rating.toFixed(1)} Rating ({profile.rating_count} {profile.rating_count === 1 ? 'review' : 'reviews'})</p>
+            </>
+          ) : (
+            <p className="ml-1 text-md text-slate-600">No ratings</p>
+          )}
         </div>
 
       </div>

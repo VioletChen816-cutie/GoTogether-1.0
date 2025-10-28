@@ -8,6 +8,7 @@ interface RequestCardProps {
   request: Request;
   viewAs: 'passenger' | 'driver';
   refreshData: () => void;
+  onAccept?: (request: Request) => void;
 }
 
 const StatusBadge: React.FC<{ status: RequestStatus }> = ({ status }) => {
@@ -21,12 +22,15 @@ const StatusBadge: React.FC<{ status: RequestStatus }> = ({ status }) => {
   return <span className={`${baseClasses} ${statusClasses[status]}`}>{status}</span>;
 };
 
-const TripCompanions: React.FC<{ ride: Request['ride'], currentUser: Driver, onProfileClick: (profile: Driver) => void }> = ({ ride, currentUser, onProfileClick }) => {
+const TripCompanions: React.FC<{ ride: Request['ride'], currentUser: Driver, onProfileClick: (profile: Driver) => void, status: RequestStatus }> = ({ ride, currentUser, onProfileClick, status }) => {
   const otherPassengers = ride.passengers.filter(p => p.id !== currentUser.id);
+  const isPending = status === RequestStatus.Pending;
   
   return (
-    <div className="border-t border-slate-100 mt-4 pt-4">
-      <h3 className="text-sm font-semibold text-slate-600 mb-3">Trip Companions</h3>
+    <div>
+      <h3 className="text-sm font-semibold text-slate-600 mb-3">
+        Companion Information
+      </h3>
       <div className="space-y-3">
         {/* Driver Info */}
         <div 
@@ -40,7 +44,7 @@ const TripCompanions: React.FC<{ ride: Request['ride'], currentUser: Driver, onP
           </div>
         </div>
         {/* Other Passengers */}
-        {otherPassengers.map(p => (
+        {!isPending && otherPassengers.map(p => (
            <div key={p.id} 
               className="flex items-center space-x-3 cursor-pointer hover:bg-slate-50 p-1 -m-1 rounded-lg transition-colors"
               onClick={() => onProfileClick(p)}
@@ -58,13 +62,13 @@ const TripCompanions: React.FC<{ ride: Request['ride'], currentUser: Driver, onP
 }
 
 
-const RequestCard: React.FC<RequestCardProps> = ({ request, viewAs, refreshData }) => {
+const RequestCard: React.FC<RequestCardProps> = ({ request, viewAs, refreshData, onAccept }) => {
   const { user } = useAuth();
   const { ride, passenger, status } = request;
   const [loadingAction, setLoadingAction] = useState<'accept' | 'reject' | 'cancel' | null>(null);
   const [viewingProfile, setViewingProfile] = useState<Driver | null>(null);
 
-  const handleUpdateStatus = async (newStatus: RequestStatus, action: 'accept' | 'reject' | 'cancel') => {
+  const handleUpdateStatus = async (newStatus: RequestStatus, action: 'reject' | 'cancel') => {
     setLoadingAction(action);
     try {
       await updateRequestStatus(request.id, newStatus);
@@ -75,6 +79,14 @@ const RequestCard: React.FC<RequestCardProps> = ({ request, viewAs, refreshData 
     } finally {
       setLoadingAction(null);
     }
+  };
+  
+  const handleAccept = async () => {
+    setLoadingAction('accept');
+    if (onAccept) {
+        await onAccept(request);
+    }
+    setLoadingAction(null);
   };
 
   const formattedDate = ride.departureTime.toLocaleDateString(undefined, {
@@ -101,6 +113,11 @@ const RequestCard: React.FC<RequestCardProps> = ({ request, viewAs, refreshData 
                 </div>
                 <div className="pl-3 border-l border-slate-200">
                   <p className="font-bold text-slate-800">{ride.from} to {ride.to}</p>
+                  {ride.car && (
+                     <p className="text-sm text-slate-500">
+                        🚗 {ride.car.make} {ride.car.model}
+                     </p>
+                  )}
                   <p className="text-sm text-slate-500">
                     {viewAs === 'passenger' ? `Driver: ${ride.driver.name}` : `Passenger: ${passenger.name}`}
                   </p>
@@ -110,9 +127,23 @@ const RequestCard: React.FC<RequestCardProps> = ({ request, viewAs, refreshData 
             <StatusBadge status={status} />
           </div>
 
-          {/* Companions for Passenger (Accepted) */}
-          {viewAs === 'passenger' && status === RequestStatus.Accepted && user && (
-              <TripCompanions ride={ride} currentUser={passenger} onProfileClick={setViewingProfile}/>
+          {/* Passenger View: Companions and Actions */}
+          {viewAs === 'passenger' && user && (status === RequestStatus.Accepted || status === RequestStatus.Pending) && (
+            <div className="border-t border-slate-100 mt-4 pt-4">
+              <TripCompanions ride={ride} currentUser={passenger} onProfileClick={setViewingProfile} status={status}/>
+              
+              {status === RequestStatus.Pending && (
+                <div className="mt-4 flex justify-end">
+                  <button
+                    onClick={() => handleUpdateStatus(RequestStatus.Cancelled, 'cancel')}
+                    disabled={isLoading}
+                    className="px-4 py-1.5 text-sm font-semibold bg-slate-100 text-slate-700 border border-slate-300 rounded-lg hover:bg-slate-200 transition-colors disabled:opacity-50"
+                  >
+                    {loadingAction === 'cancel' ? 'Cancelling...' : 'Cancel Request'}
+                  </button>
+                </div>
+              )}
+            </div>
           )}
 
           {/* Actions for Driver (Pending) */}
@@ -138,7 +169,7 @@ const RequestCard: React.FC<RequestCardProps> = ({ request, viewAs, refreshData 
                   {loadingAction === 'reject' ? 'Rejecting...' : 'Reject'}
                 </button>
                 <button
-                  onClick={() => handleUpdateStatus(RequestStatus.Accepted, 'accept')}
+                  onClick={handleAccept}
                   disabled={isLoading}
                   className="px-4 py-1.5 text-sm font-semibold bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors disabled:bg-blue-300"
                 >
@@ -171,19 +202,6 @@ const RequestCard: React.FC<RequestCardProps> = ({ request, viewAs, refreshData 
                   {loadingAction === 'cancel' ? 'Cancelling...' : 'Cancel Booking'}
                 </button>
               </div>
-            </div>
-          )}
-          
-          {/* Actions for Passenger */}
-          {viewAs === 'passenger' && status === RequestStatus.Pending && (
-            <div className="border-t border-slate-100 mt-4 pt-4 flex justify-end">
-              <button
-                onClick={() => handleUpdateStatus(RequestStatus.Cancelled, 'cancel')}
-                disabled={isLoading}
-                className="px-4 py-1.5 text-sm font-semibold bg-slate-100 text-slate-700 border border-slate-300 rounded-lg hover:bg-slate-200 transition-colors disabled:opacity-50"
-              >
-                {loadingAction === 'cancel' ? 'Cancelling...' : 'Cancel Request'}
-              </button>
             </div>
           )}
         </div>

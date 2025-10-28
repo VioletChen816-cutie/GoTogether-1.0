@@ -1,12 +1,19 @@
-import React, { useState } from 'react';
-import { Ride, Request } from '../types';
+import React, { useState, useMemo } from 'react';
+import { Ride, Request, UserToRate, AppNotification, NotificationEnumType } from '../types';
 import Tabs from './Tabs';
 import FindARide from './FindARide';
 import RequestCard from './RequestCard';
+import RatingModal from './RatingModal';
+import { submitRating } from '../services/rideService';
+import { useNotification } from '../providers/NotificationProvider';
+import RideCard from './RideCard';
+import { markNotificationsAsReadByType } from '../services/notificationService';
 
 interface PassengerViewProps {
   allRides: Ride[];
   passengerRequests: Request[];
+  notifications: AppNotification[];
+  setNotifications?: React.Dispatch<React.SetStateAction<AppNotification[]>>;
   refreshData: () => void;
 }
 
@@ -16,20 +23,81 @@ const SuitcaseIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-
 const ClockIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>;
 
 
-const PassengerView: React.FC<PassengerViewProps> = ({ allRides, passengerRequests, refreshData }) => {
+const PassengerView: React.FC<PassengerViewProps> = ({ allRides, passengerRequests, notifications, setNotifications, refreshData }) => {
+  const [activeTab, setActiveTab] = useState('Find Rides');
+  const [ratingModalState, setRatingModalState] = useState<{ isOpen: boolean; rideId: string; userToRate: UserToRate; } | null>(null);
+  const { showNotification } = useNotification();
+  
+  const acceptedRequests = passengerRequests.filter(r => r.status === 'accepted' && r.ride.status !== 'completed');
+  const historicalRequests = passengerRequests.filter(r => r.ride.status === 'completed');
+
+  const relevantTypesForMyRequests: NotificationEnumType[] = [
+      NotificationEnumType.RequestAccepted,
+      NotificationEnumType.RequestRejected,
+      NotificationEnumType.DriverCancelledRide,
+      NotificationEnumType.BookingCancelled,
+  ];
+
+  const myRequestsBadgeCount = useMemo(() => {
+    return notifications.filter(n => !n.is_read && relevantTypesForMyRequests.includes(n.type)).length;
+  }, [notifications, relevantTypesForMyRequests]);
+
   const passengerTabs = [
     { name: 'Find Rides', icon: <SearchIcon /> },
-    { name: 'My Requests', icon: <BellIcon /> },
+    { name: 'My Requests', icon: <BellIcon />, ...(myRequestsBadgeCount > 0 && { badgeCount: myRequestsBadgeCount }) },
     { name: 'My Trips', icon: <SuitcaseIcon /> },
     { name: 'Ride History', icon: <ClockIcon /> }
   ];
-  const [activeTab, setActiveTab] = useState(passengerTabs[0].name);
 
-  const acceptedRequests = passengerRequests.filter(r => r.status === 'accepted');
+  const handleTabClick = (tabName: string) => {
+    setActiveTab(tabName);
+    if (tabName === 'My Requests' && setNotifications) {
+        const notificationsToUpdate = notifications.filter(n =>
+            !n.is_read && relevantTypesForMyRequests.includes(n.type)
+        );
+
+        if (notificationsToUpdate.length > 0) {
+            // Optimistic UI update
+            const updatedNotifications = notifications.map(n =>
+                notificationsToUpdate.some(u => u.id === n.id) ? { ...n, is_read: true } : n
+            );
+            setNotifications(updatedNotifications);
+
+            // Update in the background
+            markNotificationsAsReadByType(relevantTypesForMyRequests).catch(error => {
+                console.error("Failed to mark notifications as read:", error);
+                // Optionally revert state or rely on next refreshData call
+            });
+        }
+    }
+  };
+
+  const handleOpenRatingModal = (rideId: string, userToRate: UserToRate) => {
+    setRatingModalState({ isOpen: true, rideId, userToRate });
+  };
+  
+  const handleRatingSubmit = async (rating: number, comment?: string) => {
+    if (!ratingModalState) return;
+    try {
+      await submitRating({
+        rideId: ratingModalState.rideId,
+        rateeId: ratingModalState.userToRate.id,
+        rating,
+        comment,
+      });
+      showNotification({ type: 'success', message: 'Your rating has been submitted!' });
+      refreshData();
+    } catch (error) {
+      showNotification({ type: 'error', message: 'Failed to submit rating.' });
+    } finally {
+      setRatingModalState(null);
+    }
+  };
+
 
   return (
     <div>
-      <Tabs tabs={passengerTabs} activeTab={activeTab} onTabClick={setActiveTab} />
+      <Tabs tabs={passengerTabs} activeTab={activeTab} onTabClick={handleTabClick} />
       <div className="mt-8">
         {activeTab === 'Find Rides' && <FindARide rides={allRides} passengerRequests={passengerRequests} refreshData={refreshData} />}
         {activeTab === 'My Requests' && (
@@ -58,12 +126,34 @@ const PassengerView: React.FC<PassengerViewProps> = ({ allRides, passengerReques
             )}
           </div>
         )}
-        {activeTab === 'Ride History' && <div className="text-center text-slate-500 py-16">
-            <ClockIcon />
-            <p className="font-semibold mt-4">No ride history.</p>
-            <p className="text-sm">Your past trips will be shown here.</p>
-        </div>}
+        {activeTab === 'Ride History' && (
+           <div className="space-y-4">
+            {historicalRequests.length > 0 ? (
+              historicalRequests.map(req => (
+                <RideCard
+                  key={req.ride.id}
+                  ride={req.ride}
+                  onRateDriver={handleOpenRatingModal}
+                />
+              ))
+            ) : (
+              <div className="text-center text-slate-500 py-16">
+                 <ClockIcon />
+                <p className="font-semibold mt-4">No ride history.</p>
+                <p className="text-sm">Your past trips will be shown here.</p>
+              </div>
+            )}
+          </div>
+        )}
       </div>
+      {ratingModalState?.isOpen && (
+        <RatingModal
+          isOpen={ratingModalState.isOpen}
+          userToRate={ratingModalState.userToRate}
+          onClose={() => setRatingModalState(null)}
+          onSubmit={handleRatingSubmit}
+        />
+      )}
     </div>
   );
 };

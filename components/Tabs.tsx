@@ -4,6 +4,7 @@ interface Tab {
   name: string;
   // FIX: Changed JSX.Element to React.ReactElement to fix "Cannot find namespace 'JSX'" error.
   icon: React.ReactElement;
+  badgeCount?: number;
 }
 interface TabsProps {
   tabs: Tab[];
@@ -22,10 +23,15 @@ const Tabs: React.FC<TabsProps> = ({ tabs, activeTab, onTabClick }) => {
             activeTab === tab.name
               ? 'bg-white text-blue-600 shadow-sm'
               : 'text-slate-600 hover:bg-white/60 hover:text-blue-600'
-          } flex items-center justify-center space-x-2 flex-1 py-2.5 px-3 rounded-md font-semibold text-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50`}
+          } flex items-center justify-center space-x-2 flex-1 py-2.5 px-3 rounded-md font-semibold text-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 relative`}
         >
           {tab.icon}
           <span>{tab.name}</span>
+          {tab.badgeCount && tab.badgeCount > 0 && (
+            <span className="absolute -top-1 -right-1 block h-5 w-5 rounded-full bg-red-500 text-white text-xs font-semibold flex items-center justify-center ring-2 ring-slate-100">
+              {tab.badgeCount > 9 ? '9+' : tab.badgeCount}
+            </span>
+          )}
         </button>
       ))}
     </div>

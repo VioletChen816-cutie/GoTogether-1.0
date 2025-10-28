@@ -39,8 +39,9 @@ DROP TYPE IF EXISTS public.ride_status;
 
 -- Step 5: Drop storage policies.
 DROP POLICY IF EXISTS "Avatar images are publicly accessible." ON storage.objects;
-DROP POLICY IF EXISTS "Anyone can upload an avatar." ON storage.objects;
+DROP POLICY IF EXISTS "Authenticated users can upload an avatar." ON storage.objects;
 DROP POLICY IF EXISTS "Users can update their own avatars." ON storage.objects;
+DROP POLICY IF EXISTS "Users can delete their own avatars." ON storage.objects;
 
 
 -- ========= CREATE SCRIPT =========
@@ -78,11 +79,14 @@ on conflict (id) do nothing;
 create policy "Avatar images are publicly accessible." on storage.objects
   for select using (bucket_id = 'avatars');
 
-create policy "Anyone can upload an avatar." on storage.objects
-  for insert with check (bucket_id = 'avatars');
+create policy "Authenticated users can upload an avatar." on storage.objects
+  for insert to authenticated with check (bucket_id = 'avatars');
 
 create policy "Users can update their own avatars." on storage.objects
     for update with check (auth.uid() = owner);
+
+create policy "Users can delete their own avatars." on storage.objects
+    for delete using (auth.uid() = owner);
 
 
 -- 4. Create a trigger that automatically creates a profile for new users.
@@ -295,6 +299,14 @@ begin
   -- Actor is Passenger
   if auth.uid() = _passenger_id then
     if new_status = 'cancelled' then
+      -- Mark previous 'NEW_REQUEST' notification as read to avoid confusion for the driver.
+      update public.notifications
+      set is_read = true
+      where request_id = request_id_arg
+      and user_id = _driver_id
+      and type = 'NEW_REQUEST'
+      and is_read = false;
+
       update public.requests set status = new_status where id = request_id_arg;
       if _current_status = 'accepted' then
         update public.rides set seats_available = seats_available + 1 where id = _ride_id;
@@ -379,6 +391,14 @@ begin
   
   if found then
     if _current_status in ('cancelled', 'rejected') then
+      -- Mark previous related notifications (like 'PASSENGER_CANCELLED' or 'REQUEST_REJECTED') as read.
+      update public.notifications
+      set is_read = true
+      where request_id = _request_id
+      and user_id = _driver_id
+      and type in ('PASSENGER_CANCELLED', 'REQUEST_REJECTED') -- Target specific notifications
+      and is_read = false;
+
       update public.requests set status = 'pending', created_at = now() where id = _request_id;
       perform create_notification(_driver_id, 'NEW_REQUEST', _passenger_name || ' re-submitted a request for your ride from ' || _ride_from || ' to ' || _ride_to || '.', ride_id_arg, _request_id);
     else

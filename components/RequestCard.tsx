@@ -127,22 +127,33 @@ const RequestCard: React.FC<RequestCardProps> = ({ request, viewAs, refreshData,
             <StatusBadge status={status} />
           </div>
 
-          {/* Passenger View: Companions and Actions */}
-          {viewAs === 'passenger' && user && (status === RequestStatus.Accepted || status === RequestStatus.Pending) && (
-            <div className="border-t border-slate-100 mt-4 pt-4">
-              <TripCompanions ride={ride} currentUser={passenger} onProfileClick={setViewingProfile} status={status}/>
-              
-              {status === RequestStatus.Pending && (
-                <div className="mt-4 flex justify-end">
-                  <button
+          {/* Passenger View: Pending Request */}
+          {viewAs === 'passenger' && user && status === RequestStatus.Pending && (
+            <div className="border-t border-slate-100 mt-4 pt-4 flex items-center justify-between">
+                <div 
+                    className="flex items-center space-x-3 cursor-pointer hover:bg-slate-50 p-1 -m-1 rounded-lg transition-colors"
+                    onClick={() => setViewingProfile(ride.driver)}
+                    >
+                    <img className="h-10 w-10 rounded-full object-cover" src={ride.driver.avatar_url || `https://picsum.photos/seed/${ride.driver.id}/100/100`} alt={ride.driver.name} />
+                    <div>
+                        <p className="text-sm font-medium text-slate-900">{ride.driver.name}</p>
+                        <p className="text-xs text-slate-500">Driver</p>
+                    </div>
+                </div>
+                <button
                     onClick={() => handleUpdateStatus(RequestStatus.Cancelled, 'cancel')}
                     disabled={isLoading}
                     className="px-4 py-1.5 text-sm font-semibold bg-slate-100 text-slate-700 border border-slate-300 rounded-lg hover:bg-slate-200 transition-colors disabled:opacity-50"
                   >
                     {loadingAction === 'cancel' ? 'Cancelling...' : 'Cancel Request'}
-                  </button>
-                </div>
-              )}
+                </button>
+             </div>
+          )}
+
+          {/* Passenger View: Accepted Trip */}
+          {viewAs === 'passenger' && user && status === RequestStatus.Accepted && (
+            <div className="border-t border-slate-100 mt-4 pt-4">
+              <TripCompanions ride={ride} currentUser={passenger} onProfileClick={setViewingProfile} status={status}/>
             </div>
           )}
 

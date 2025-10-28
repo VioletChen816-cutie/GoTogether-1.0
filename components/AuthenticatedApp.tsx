@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { UserRole, Ride, Request, AppNotification } from '../types';
 import RoleSwitcher from './RoleSwitcher';
 import PassengerView from './PassengerView';
-import DriverDashboard from './DriverView';
+import DriverDashboard from './DriverView.tsx';
 import ProfileSettings from './ProfileSettings';
 import { useAuth } from '../providers/AuthProvider';
 import { useNotification } from '../providers/NotificationProvider';

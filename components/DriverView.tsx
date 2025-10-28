@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 // FIX: Added RequestStatus to imports to use the enum.
-import { Ride, Request, RideStatus, UserToRate, RequestStatus, AppNotification, NotificationEnumType } from '../types';
+import { Ride, Request, RideStatus, UserToRate, AppNotification, NotificationEnumType, RequestStatus } from '../types';
 import Tabs from './Tabs';
 import PostARide from './PostARide';
 import RideCard from './RideCard';

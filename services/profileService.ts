@@ -65,13 +65,18 @@ export const createProfile = async (profileData: { id: string; full_name: string
 export const uploadAvatar = async (userId: string, file: File): Promise<string> => {
     if (!supabase) throw new Error('Supabase client not initialized');
 
-    const fileExt = file.name.split('.').pop();
-    const fileName = `${userId}-${Date.now()}.${fileExt}`;
-    const filePath = `${fileName}`;
+    // Use a consistent file path, e.g., the user's ID. 
+    // This makes it easy to update the avatar without creating orphaned files.
+    const filePath = `${userId}`;
 
     const { error: uploadError } = await supabase.storage
         .from('avatars')
-        .upload(filePath, file);
+        // Use `upload` with `upsert: true`. This will create the file if it doesn't exist,
+        // or overwrite it if it does. This is the correct way to handle profile picture updates.
+        .upload(filePath, file, {
+            cacheControl: '3600',
+            upsert: true
+        });
 
     if (uploadError) {
         console.error('Error uploading avatar', uploadError);
@@ -82,7 +87,10 @@ export const uploadAvatar = async (userId: string, file: File): Promise<string> 
         .from('avatars')
         .getPublicUrl(filePath);
 
-    return data.publicUrl;
+    // Append a timestamp to the URL as a query parameter.
+    // This is a cache-busting technique to ensure the browser fetches the new image
+    // instead of showing a stale one from its cache.
+    return `${data.publicUrl}?t=${new Date().getTime()}`;
 }
 
 // --- Car Management ---

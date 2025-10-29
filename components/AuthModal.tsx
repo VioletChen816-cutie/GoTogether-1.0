@@ -9,6 +9,8 @@ const AuthModal: React.FC = () => {
   const [isSigningUp, setIsSigningUp] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [fullName, setFullName] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState('');
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
@@ -30,7 +32,16 @@ const AuthModal: React.FC = () => {
 
     try {
       if (isSigningUp) {
-        const { error } = await supabase.auth.signUp({ email, password });
+        const { error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            data: {
+              full_name: fullName,
+              phone_number: phoneNumber,
+            }
+          }
+        });
         if (error) throw error;
         setMessage('Check your email for the confirmation link!');
       } else {
@@ -50,6 +61,8 @@ const AuthModal: React.FC = () => {
     setMessage('');
     setEmail('');
     setPassword('');
+    setFullName('');
+    setPhoneNumber('');
     setIsSigningUp(false);
     setAgreedToTerms(false);
     closeAuthModal();
@@ -69,6 +82,16 @@ const AuthModal: React.FC = () => {
               {isSigningUp ? 'Create Account' : 'Welcome Back'}
             </h2>
             <form onSubmit={handleAuthAction} className="space-y-4">
+              {isSigningUp && (
+                <input
+                  type="text"
+                  placeholder="Full Name"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  required
+                />
+              )}
               <input
                 type="email"
                 placeholder="Email"
@@ -85,6 +108,16 @@ const AuthModal: React.FC = () => {
                 className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 required
               />
+              {isSigningUp && (
+                <input
+                  type="tel"
+                  placeholder="Phone Number"
+                  value={phoneNumber}
+                  onChange={(e) => setPhoneNumber(e.target.value)}
+                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  required
+                />
+              )}
               {isSigningUp && (
                 <div className="flex items-start">
                   <div className="flex items-center h-5">

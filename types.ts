@@ -21,6 +21,7 @@ export interface Driver {
   avatar_url: string | null;
   average_rating: number;
   rating_count: number;
+  phone_number?: string | null;
 }
 
 export enum RideStatus {

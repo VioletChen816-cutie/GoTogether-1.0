@@ -38,13 +38,13 @@ export const updateProfile = async (userId: string, updates: { full_name: string
     }
 };
 
-export const createProfile = async (profileData: { id: string; full_name: string; avatar_url: string | null; }) => {
+export const createProfile = async (profileData: { id: string; full_name: string; avatar_url: string | null; phone_number: string | null; }) => {
   if (!supabase) throw new Error('Supabase client not initialized');
   const { error } = await supabase.from('profiles').insert({
     id: profileData.id,
     full_name: profileData.full_name,
     avatar_url: profileData.avatar_url,
-    phone_number: null,
+    phone_number: profileData.phone_number,
     updated_at: new Date().toISOString(),
   });
 

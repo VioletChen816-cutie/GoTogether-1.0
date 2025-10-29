@@ -58,12 +58,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     if (!profileData) {
       console.warn(`Profile for ${user.id} not found after retries. Attempting to create one.`);
       try {
-        // Use the part of the email before the '@' as a default full_name.
-        const defaultFullName = user.email?.split('@')[0] || 'New User';
+        // Use full_name from metadata if available, otherwise derive from email.
+        const defaultFullName = user.user_metadata?.full_name || user.email?.split('@')[0] || 'New User';
+        const phoneNumber = user.user_metadata?.phone_number || null;
         await createProfile({
           id: user.id,
           full_name: defaultFullName,
           avatar_url: null,
+          phone_number: phoneNumber,
         });
 
         // Fetch the newly created profile
@@ -117,9 +119,18 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   }, [user, fetchProfile]);
 
   const signOut = async () => {
-    if (supabase) {
-      await supabase.auth.signOut();
+    if (!supabase) return;
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      console.error("Error signing out:", error);
+      // In a real app, you might want to show a notification.
+      return;
     }
+    // Explicitly clear the session and profile state to ensure the UI updates immediately.
+    // The onAuthStateChange listener will also fire, but this prevents any delay.
+    setSession(null);
+    setUser(null);
+    setProfile(null);
   };
 
   const value = {

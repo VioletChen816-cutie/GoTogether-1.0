@@ -19,11 +19,12 @@ const rideSelectQuery = `
     full_name,
     avatar_url,
     average_rating,
-    rating_count
+    rating_count,
+    phone_number
   ),
   requests (
     status,
-    passenger:passenger_id(id, full_name, avatar_url, average_rating, rating_count)
+    passenger:passenger_id(id, full_name, avatar_url, average_rating, rating_count, phone_number)
   ),
   ratings (
     rater_id,
@@ -50,7 +51,8 @@ const rideSelectQueryForRequest = `
     full_name,
     avatar_url,
     average_rating,
-    rating_count
+    rating_count,
+    phone_number
   ),
   ratings (
     rater_id,
@@ -61,7 +63,7 @@ const rideSelectQueryForRequest = `
 
 const mapDriverData = (profile: any): Driver => {
     if (!profile) {
-        return { id: 'unknown', name: 'Unknown Driver', avatar_url: null, average_rating: 0, rating_count: 0 };
+        return { id: 'unknown', name: 'Unknown Driver', avatar_url: null, average_rating: 0, rating_count: 0, phone_number: null };
     }
     return {
         id: profile.id,
@@ -69,6 +71,7 @@ const mapDriverData = (profile: any): Driver => {
         avatar_url: profile.avatar_url,
         average_rating: profile.average_rating || 0,
         rating_count: profile.rating_count || 0,
+        phone_number: profile.phone_number,
     };
 };
 
@@ -213,7 +216,7 @@ export const getPassengerRequests = async (): Promise<Request[]> => {
         .select(`
             id, created_at, status,
             rides ( ${rideSelectQueryForRequest} ),
-            profiles!passenger_id (id, full_name, avatar_url, average_rating, rating_count)
+            profiles!passenger_id (id, full_name, avatar_url, average_rating, rating_count, phone_number)
         `)
         .eq('passenger_id', user.id)
         .order('created_at', { ascending: false });
@@ -244,7 +247,7 @@ export const getDriverRequests = async (): Promise<Request[]> => {
         .select(`
             id, created_at, status,
             rides ( ${rideSelectQueryForRequest} ),
-            profiles!passenger_id (id, full_name, avatar_url, average_rating, rating_count)
+            profiles!passenger_id (id, full_name, avatar_url, average_rating, rating_count, phone_number)
         `)
         .in('ride_id', rideIds.map(r => r.id))
         .order('created_at', { ascending: false });

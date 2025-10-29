@@ -52,6 +52,12 @@ const ProfileSettings: React.FC<{ backToApp: () => void }> = ({ backToApp }) => 
     e.preventDefault();
     if (!user) return;
     
+    if (!fullName.trim() || !phoneNumber.trim()) {
+      setError('Full name and phone number are required.');
+      setSuccess('');
+      return;
+    }
+
     setLoading(true);
     setError('');
     setSuccess('');
@@ -173,7 +179,7 @@ const ProfileSettings: React.FC<{ backToApp: () => void }> = ({ backToApp }) => 
         </div>
         
         <div>
-          <label htmlFor="phone-number" className="block text-sm font-medium text-slate-600">Phone Number (Optional)</label>
+          <label htmlFor="phone-number" className="block text-sm font-medium text-slate-600">Phone Number</label>
           <input
             type="tel"
             id="phone-number"
@@ -181,6 +187,7 @@ const ProfileSettings: React.FC<{ backToApp: () => void }> = ({ backToApp }) => 
             onChange={(e) => setPhoneNumber(e.target.value)}
             className={inputBaseClasses}
             placeholder="e.g., (123) 456-7890"
+            required
           />
         </div>
 

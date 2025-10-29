@@ -1,5 +1,6 @@
 import React from 'react';
 import { Request } from '../types';
+import ContactInfo from './ContactInfo';
 
 interface RideConfirmationModalProps {
   request: Request | null;
@@ -37,6 +38,11 @@ const RideConfirmationModal: React.FC<RideConfirmationModalProps> = ({ request, 
 
   const { ride, passenger } = request;
   const { from, to, departureTime, car } = ride;
+
+  // Determine which user's contact info to display.
+  // If the current user is a passenger, show the driver's number.
+  // If the current user is a driver, show the passenger's number.
+  const contactUser = userRole === 'passenger' ? ride.driver : passenger;
 
   const formattedDate = departureTime.toLocaleDateString(undefined, {
     weekday: 'long',
@@ -91,6 +97,13 @@ const RideConfirmationModal: React.FC<RideConfirmationModalProps> = ({ request, 
         <div className="mt-6">
             {userRole === 'passenger' && <UserCard user={ride.driver} role="Your Driver" />}
             {userRole === 'driver' && <UserCard user={passenger} role="Your Passenger" />}
+            
+            <div className="mt-4">
+              <ContactInfo 
+                  rideConfirmed={true}
+                  userPhoneNumber={contactUser.phone_number}
+              />
+            </div>
             
             {car && (
                 <div className="mt-4 p-4 bg-slate-50 rounded-lg space-y-3">

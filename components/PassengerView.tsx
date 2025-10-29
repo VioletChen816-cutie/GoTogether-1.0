@@ -99,7 +99,7 @@ const PassengerView: React.FC<PassengerViewProps> = ({ allRides, passengerReques
     <div>
       <Tabs tabs={passengerTabs} activeTab={activeTab} onTabClick={handleTabClick} />
       <div className="mt-8">
-        {activeTab === 'Find Rides' && <FindARide rides={allRides} passengerRequests={passengerRequests} refreshData={refreshData} />}
+        {activeTab === 'Find Rides' && <FindARide rides={allRides} passengerRequests={passengerRequests} refreshData={refreshData} onRateDriver={handleOpenRatingModal} />}
         {activeTab === 'My Requests' && (
           <div className="space-y-4">
             {passengerRequests.length > 0 ? (
@@ -134,6 +134,7 @@ const PassengerView: React.FC<PassengerViewProps> = ({ allRides, passengerReques
                   key={req.ride.id}
                   ride={req.ride}
                   onRateDriver={handleOpenRatingModal}
+                  isHistoryView={true}
                 />
               ))
             ) : (

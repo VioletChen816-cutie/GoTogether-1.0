@@ -11,6 +11,7 @@ export interface Profile {
   full_name: string;
   avatar_url: string | null;
   phone_number: string | null;
+  payment_info: string | null;
   average_rating: number;
   rating_count: number;
   is_verified_student: boolean;
@@ -23,6 +24,7 @@ export interface Driver {
   average_rating: number;
   rating_count: number;
   phone_number?: string | null;
+  payment_info?: string | null;
   is_verified_student: boolean;
 }
 

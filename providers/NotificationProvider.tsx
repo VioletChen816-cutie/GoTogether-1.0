@@ -16,12 +16,14 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
   const showNotification = useCallback((newNotification: NotificationType) => {
     // If there's an existing timeout, clear it to reset the timer
     if (timeoutId) {
-      clearTimeout(timeoutId);
+      // FIX: Changed to window.clearTimeout to ensure the browser's implementation is used, which takes a number, avoiding type conflicts with Node.js types.
+      window.clearTimeout(timeoutId);
     }
     
     setNotification({ ...newNotification, visible: true });
 
-    const id = setTimeout(() => {
+    // FIX: Changed to window.setTimeout to ensure it returns a number and not NodeJS.Timeout, resolving the type error.
+    const id = window.setTimeout(() => {
       setNotification(n => n ? { ...n, visible: false } : null);
     }, 5000); // Notification stays for 5 seconds
 

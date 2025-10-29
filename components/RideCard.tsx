@@ -16,6 +16,7 @@ interface RideCardProps {
   onRateDriver?: (rideId: string, userToRate: UserToRate) => void;
   onRatePassenger?: (rideId: string, userToRate: UserToRate) => void;
   isProcessing?: boolean;
+  isHistoryView?: boolean;
 }
 
 const VerifiedBadge: React.FC<{className?: string}> = ({className}) => (
@@ -139,13 +140,15 @@ const PassengerList: React.FC<{
 };
 
 
-const RideCard: React.FC<RideCardProps> = ({ ride, requestStatus, refreshData, isDriverView = false, onCancel, onComplete, onRateDriver, onRatePassenger, isProcessing = false }) => {
+const RideCard: React.FC<RideCardProps> = ({ ride, requestStatus, refreshData, isDriverView = false, onCancel, onComplete, onRateDriver, onRatePassenger, isProcessing = false, isHistoryView = false }) => {
   const { user, openAuthModal } = useAuth();
+  const { showNotification } = useNotification();
   const { from, to, departureTime, seatsAvailable, driver, price, passengers, status, ratings, car } = ride;
   const [isLoading, setIsLoading] = useState(false);
   const [viewingProfile, setViewingProfile] = useState<Driver | null>(null);
   const isFull = seatsAvailable === 0;
   const isOwnRide = user?.id === ride.driver.id;
+  const isPast = ride.departureTime.getTime() < Date.now();
 
   const formattedDate = departureTime.toLocaleDateString(undefined, {
     weekday: 'short',
@@ -175,12 +178,21 @@ const RideCard: React.FC<RideCardProps> = ({ ride, requestStatus, refreshData, i
     }
   };
 
+  const handleCopyPaymentInfo = () => {
+    if (!driver.payment_info) return;
+    navigator.clipboard.writeText(driver.payment_info).then(() => {
+        showNotification({ type: 'success', message: 'Payment info copied!' });
+    }).catch(err => {
+        console.error('Failed to copy info: ', err);
+        showNotification({ type: 'error', message: 'Could not copy info.' });
+    });
+  };
+
   const getButtonState = () => {
     const commonClasses = "px-5 py-2 rounded-full font-semibold whitespace-nowrap text-sm";
 
     if (isDriverView) {
-      const isPastRide = ride.departureTime.getTime() < Date.now();
-      if (status === RideStatus.Active && isPastRide) {
+      if (status === RideStatus.Active && isPast) {
         return (
           <button
             onClick={() => onComplete?.(ride.id)}
@@ -213,6 +225,7 @@ const RideCard: React.FC<RideCardProps> = ({ ride, requestStatus, refreshData, i
     if (isOwnRide) return <span className={`${commonClasses} bg-green-100 text-green-800 cursor-default`}>Your Ride</span>;
 
     if (status === RideStatus.Completed) {
+        if (!user) return null;
         const hasRated = ratings.some(r => r.rater_id === user?.id && r.ratee_id === driver.id);
         if (hasRated) {
             return <span className={`${commonClasses} bg-green-100 text-green-800 cursor-default`}>Rated</span>
@@ -229,6 +242,10 @@ const RideCard: React.FC<RideCardProps> = ({ ride, requestStatus, refreshData, i
 
     if (status === RideStatus.Cancelled) {
       return <button disabled className={`${commonClasses} bg-slate-100 text-slate-800 cursor-not-allowed`}>Cancelled</button>;
+    }
+
+    if (status === RideStatus.Active && isPast) {
+      return <span className={`${commonClasses} bg-slate-100 text-slate-800 cursor-default`}>Expired</span>;
     }
     
     switch (requestStatus) {
@@ -250,10 +267,16 @@ const RideCard: React.FC<RideCardProps> = ({ ride, requestStatus, refreshData, i
   };
   
   const getCardStyleClasses = () => {
+    if (status === RideStatus.Completed && !isHistoryView) {
+      return 'grayscale opacity-60';
+    }
     if (status === RideStatus.Cancelled) {
       return 'grayscale opacity-75';
     }
-    if (isFull && !isDriverView && status !== 'completed') {
+    if (status === RideStatus.Active && isPast && !isDriverView && !isHistoryView) {
+      return 'grayscale opacity-70';
+    }
+    if (isFull && !isDriverView) {
       return 'opacity-80';
     }
     return '';
@@ -262,6 +285,9 @@ const RideCard: React.FC<RideCardProps> = ({ ride, requestStatus, refreshData, i
   const driverAvatar = driver.avatar_url || `https://picsum.photos/seed/${driver.id}/100/100`;
 
   const shouldShowRatePassengersSection = isDriverView && status === RideStatus.Completed && passengers.length > 0;
+  
+  const shouldShowDisclaimer = status === RideStatus.Active;
+  const shouldShowCopyButton = user && driver.payment_info && !isDriverView && status === RideStatus.Completed;
 
   return (
     <>
@@ -382,6 +408,27 @@ const RideCard: React.FC<RideCardProps> = ({ ride, requestStatus, refreshData, i
                     })()
                 )}
             </div>
+            
+            {(shouldShowDisclaimer || shouldShowCopyButton) && (
+              <div className="mt-4 pt-4 border-t border-slate-200">
+                  <div className={`flex flex-col sm:flex-row items-center gap-2 ${shouldShowDisclaimer ? 'justify-between' : 'justify-end'}`}>
+                      {shouldShowDisclaimer && (
+                          <p className="text-xs text-slate-500 text-center sm:text-left">
+                              Final payment to be confirmed with driver.
+                          </p>
+                      )}
+                      {shouldShowCopyButton && (
+                          <button 
+                              onClick={handleCopyPaymentInfo}
+                              className="flex items-center space-x-1.5 px-3 py-1.5 text-xs font-semibold bg-white text-blue-600 border border-slate-300 rounded-full hover:bg-slate-100 transition-colors"
+                          >
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+                              <span>Copy Payment Info</span>
+                          </button>
+                      )}
+                  </div>
+              </div>
+            )}
 
             {shouldShowRatePassengersSection && (
                 <div className="mt-4 pt-4 border-t border-slate-200">

@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Ride, Request, RequestStatus, RideStatus } from '../types';
+import { Ride, Request, RequestStatus, RideStatus, UserToRate } from '../types';
 import RideCard from './RideCard';
 import { LOCATIONS } from '../constants';
 
@@ -7,9 +7,10 @@ interface FindARideProps {
   rides: Ride[];
   passengerRequests: Request[];
   refreshData: () => void;
+  onRateDriver?: (rideId: string, userToRate: UserToRate) => void;
 }
 
-const FindARide: React.FC<FindARideProps> = ({ rides, passengerRequests, refreshData }) => {
+const FindARide: React.FC<FindARideProps> = ({ rides, passengerRequests, refreshData, onRateDriver }) => {
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
   const [date, setDate] = useState('');
@@ -22,6 +23,21 @@ const FindARide: React.FC<FindARideProps> = ({ rides, passengerRequests, refresh
     return map;
   }, [passengerRequests]);
 
+  const getStatusWeight = (ride: Ride) => {
+    const isPast = ride.departureTime.getTime() < Date.now();
+    switch (ride.status) {
+      case RideStatus.Active:
+        if (isPast) return 2; // Expired unmatched ride
+        return ride.seatsAvailable === 0 ? 1 : 0; // Upcoming full, then available
+      case RideStatus.Cancelled:
+        return 3;
+      case RideStatus.Completed:
+        return 4;
+      default:
+        return 5; // Should not happen
+    }
+  };
+
   const filteredRides = useMemo(() => {
     return rides.filter(ride => {
       const fromMatch = !from || ride.from === from;
@@ -29,19 +45,19 @@ const FindARide: React.FC<FindARideProps> = ({ rides, passengerRequests, refresh
       const dateMatch = !date || ride.departureTime.toISOString().split('T')[0] === date;
       return fromMatch && toMatch && dateMatch;
     }).sort((a, b) => {
-      // Primary sort: Move cancelled rides to the bottom.
-      const aIsCancelled = a.status === RideStatus.Cancelled;
-      const bIsCancelled = b.status === RideStatus.Cancelled;
-      if (aIsCancelled && !bIsCancelled) return 1;
-      if (!aIsCancelled && bIsCancelled) return -1;
+      const weightA = getStatusWeight(a);
+      const weightB = getStatusWeight(b);
+      
+      if (weightA !== weightB) {
+        return weightA - weightB;
+      }
 
-      // Secondary sort: Among active rides, move full rides down.
-      const aIsFull = a.seatsAvailable === 0;
-      const bIsFull = b.seatsAvailable === 0;
-      if (aIsFull && !bIsFull) return 1;
-      if (!aIsFull && bIsFull) return -1;
-
-      // Tertiary sort: By departure time (earliest first).
+      // For all non-upcoming-active rides (weights >= 2), sort by most recent first
+      if (weightA >= 2) {
+        return b.departureTime.getTime() - a.departureTime.getTime();
+      }
+      
+      // For upcoming active rides (weights 0 and 1), sort by soonest first
       return a.departureTime.getTime() - b.departureTime.getTime();
     });
   }, [rides, from, to, date]);
@@ -114,6 +130,7 @@ const FindARide: React.FC<FindARideProps> = ({ rides, passengerRequests, refresh
               ride={ride}
               requestStatus={requestsMap.get(ride.id)}
               refreshData={refreshData}
+              onRateDriver={onRateDriver}
             />
           ))
         ) : (

@@ -53,6 +53,7 @@ create table profiles (
   full_name text,
   avatar_url text,
   phone_number text,
+  payment_info text,
   average_rating numeric(2,1) not null default 0.0,
   rating_count integer not null default 0,
   is_verified_student boolean not null default false

@@ -5,7 +5,7 @@ export const getProfile = async (userId: string): Promise<Profile | null> => {
   if (!supabase) throw new Error('Supabase client not initialized');
   const { data, error } = await supabase
     .from('profiles')
-    .select('id, updated_at, full_name, avatar_url, phone_number, average_rating, rating_count, is_verified_student')
+    .select('id, updated_at, full_name, avatar_url, phone_number, payment_info, average_rating, rating_count, is_verified_student')
     .eq('id', userId)
     .single();
 
@@ -23,12 +23,13 @@ export const getProfile = async (userId: string): Promise<Profile | null> => {
   return data;
 };
 
-export const updateProfile = async (userId: string, updates: { full_name: string; avatar_url: string | null; phone_number: string | null; }) => {
+export const updateProfile = async (userId: string, updates: { full_name: string; avatar_url: string | null; phone_number: string | null; payment_info: string | null; }) => {
     if (!supabase) throw new Error('Supabase client not initialized');
     const { error } = await supabase.from('profiles').update({
         full_name: updates.full_name,
         avatar_url: updates.avatar_url,
         phone_number: updates.phone_number,
+        payment_info: updates.payment_info,
         updated_at: new Date().toISOString(),
     }).eq('id', userId);
 

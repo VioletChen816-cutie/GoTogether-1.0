@@ -17,6 +17,7 @@ const ProfileSettings: React.FC<{ backToApp: () => void }> = ({ backToApp }) => 
   const { user, profile, refreshProfile } = useAuth();
   const [fullName, setFullName] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
+  const [paymentInfo, setPaymentInfo] = useState('');
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -39,6 +40,7 @@ const ProfileSettings: React.FC<{ backToApp: () => void }> = ({ backToApp }) => 
     if (profile) {
       setFullName(profile.full_name || '');
       setPhoneNumber(profile.phone_number || '');
+      setPaymentInfo(profile.payment_info || '');
       setAvatarPreview(profile.avatar_url || null);
     }
     fetchCars();
@@ -77,7 +79,8 @@ const ProfileSettings: React.FC<{ backToApp: () => void }> = ({ backToApp }) => 
       await updateProfile(user.id, { 
         full_name: fullName, 
         avatar_url: avatarUrl, 
-        phone_number: phoneNumber 
+        phone_number: phoneNumber,
+        payment_info: paymentInfo,
       });
       await refreshProfile();
       setSuccess('Profile updated successfully!');
@@ -201,6 +204,19 @@ const ProfileSettings: React.FC<{ backToApp: () => void }> = ({ backToApp }) => 
             placeholder="e.g., (123) 456-7890"
             required
           />
+        </div>
+
+        <div>
+          <label htmlFor="payment-info" className="block text-sm font-medium text-slate-600">Payment Info (Venmo, Zelle, etc.)</label>
+          <textarea
+            id="payment-info"
+            value={paymentInfo}
+            onChange={(e) => setPaymentInfo(e.target.value)}
+            className={inputBaseClasses}
+            placeholder="e.g., Venmo: @John-Doe-123"
+            rows={2}
+          />
+          <p className="mt-1 text-xs text-slate-500">This will be shared with passengers to facilitate payment. Only share information you are comfortable with.</p>
         </div>
 
         {error && <p className="text-red-500 text-sm">{error}</p>}

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { UserRole, Ride, Request, AppNotification } from '../types';
 import RoleSwitcher from './RoleSwitcher';
 import PassengerView from './PassengerView';
-import DriverDashboard from './DriverView';
+import DriverView from './DriverView';
 import ProfileSettings from './ProfileSettings';
 import { useAuth } from '../providers/AuthProvider';
 import { useNotification } from '../providers/NotificationProvider';
@@ -84,7 +84,7 @@ const AuthenticatedApp: React.FC<AuthenticatedAppProps & { view: 'app' | 'profil
                 {role === UserRole.Passenger ? (
                     <PassengerView allRides={allRides} passengerRequests={passengerRequests} notifications={notifications} setNotifications={setNotifications} refreshData={refreshData} />
                 ) : (
-                    <DriverDashboard 
+                    <DriverView 
                         onPostRide={onPostRide}
                         postedRides={userPostedRides}
                         driverRequests={driverRequests}

@@ -44,6 +44,12 @@ const AuthModal: React.FC = () => {
 
     try {
       if (isSigningUp) {
+        if (!email.toLowerCase().endsWith('.edu')) {
+          setError('Our rideshare network is currently open to verified students only. Please use your .edu email address to register.');
+          setLoading(false);
+          return;
+        }
+        
         const { error } = await supabase.auth.signUp({
           email,
           password,
@@ -95,7 +101,7 @@ const AuthModal: React.FC = () => {
               {isSigningUp ? 'Create an Account' : 'Welcome Back'}
             </h2>
              <p className="text-center text-sm text-slate-500 mb-8">
-              {isSigningUp ? 'Sign up with your .edu email for a verified badge.' : 'Sign in to continue.'}
+              {isSigningUp ? 'Our rideshare network is currently open to verified students and staff. Please use your .edu email to register.' : 'Sign in to continue.'}
             </p>
 
             <form onSubmit={handleAuthAction} className="space-y-4">

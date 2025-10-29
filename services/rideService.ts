@@ -1,6 +1,7 @@
 import { supabase } from '../lib/supabaseClient';
 import { Ride, Driver, Request, RequestStatus, Rating, CarInfo } from '../types';
 
+// FIX: Added 'car_is_insured' to the select query to fetch the car's insurance status.
 const rideSelectQuery = `
   id,
   from,
@@ -14,6 +15,7 @@ const rideSelectQuery = `
   car_year,
   car_color,
   car_license_plate,
+  car_is_insured,
   driver:driver_id (
     id,
     full_name,
@@ -33,6 +35,7 @@ const rideSelectQuery = `
   )
 `;
 
+// FIX: Added 'car_is_insured' to the select query to fetch the car's insurance status.
 const rideSelectQueryForRequest = `
   id,
   from,
@@ -46,6 +49,7 @@ const rideSelectQueryForRequest = `
   car_year,
   car_color,
   car_license_plate,
+  car_is_insured,
   driver:driver_id (
     id,
     full_name,
@@ -80,12 +84,14 @@ const mapRideData = (ride: any): Ride => {
     ?.filter((req: any) => req.status === 'accepted' && req.passenger)
     .map((req: any) => mapDriverData(req.passenger)) || [];
     
+  // FIX: Added 'is_insured' to the car data object to conform to the 'CarInfo' type.
   const carData: CarInfo | undefined = ride.car_make ? {
     make: ride.car_make,
     model: ride.car_model,
     year: ride.car_year,
     color: ride.car_color,
     license_plate: ride.car_license_plate,
+    is_insured: ride.car_is_insured,
   } : undefined;
 
   return {
@@ -129,6 +135,7 @@ export const addRide = async (newRide: Omit<Ride, 'id' | 'driver' | 'passengers'
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('User must be logged in to post a ride');
 
+  // FIX: Added 'car_is_insured' to the insert payload to include the car's insurance status.
   const rideData = {
     "from": newRide.from,
     "to": newRide.to,
@@ -141,6 +148,7 @@ export const addRide = async (newRide: Omit<Ride, 'id' | 'driver' | 'passengers'
     car_year: newRide.car?.year,
     car_color: newRide.car?.color,
     car_license_plate: newRide.car?.license_plate,
+    car_is_insured: newRide.car?.is_insured,
   };
 
   const { data, error } = await supabase

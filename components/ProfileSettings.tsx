@@ -4,9 +4,13 @@ import { updateProfile, uploadAvatar, getCarsForUser, addCar, updateCar, deleteC
 import { Car } from '../types';
 import CarFormModal from './CarFormModal';
 
-const CarIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-slate-500" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10 2a2 2 0 00-2 2v1H6a2 2 0 00-2 2v7a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2V4a2 2 0 00-2-2zm-1 3V4a1 1 0 112 0v1h-2zM6 8a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h4a1 1 0 100-2H7z" clipRule="evenodd" /></svg>;
+const CarIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-slate-500" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M19.383 6.634A.5.5 0 0 1 19 7v9a3 3 0 0 1-6 0v-1h-4v1a3 3 0 0 1-6 0V7a.5.5 0 0 1 .617-.492L5 7.15V4.5a.5.5 0 0 1 .5-.5h13a.5.5 0 0 1 .5.5v2.65l1.383-.617zM5.5 14a1 1 0 1 0 0 2 1 1 0 0 0 0-2zm12 0a1 1 0 1 0 0 2 1 1 0 0 0 0-2z"/>
+</svg>;
 const TrashIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>;
 const EditIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.536L16.732 3.732z" /></svg>;
+const ShieldCheckIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 20.944L12 22l9-1.056A12.02 12.02 0 0021 7.928a11.955 11.955 0 01-5.618-4.016z" /></svg>;
+const ShieldExclamationIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>;
 
 const ProfileSettings: React.FC<{ backToApp: () => void }> = ({ backToApp }) => {
   const { user, profile, refreshProfile } = useAuth();
@@ -227,7 +231,20 @@ const ProfileSettings: React.FC<{ backToApp: () => void }> = ({ backToApp }) => 
                         <CarIcon />
                         <div>
                             <p className="font-semibold text-slate-800">{car.year} {car.make} {car.model}</p>
-                            <p className="text-sm text-slate-500">{car.color} &middot; {car.license_plate}</p>
+                            <div className="flex items-center space-x-3 text-sm text-slate-500">
+                                <span>{car.color} &middot; {car.license_plate}</span>
+                                {car.is_insured ? (
+                                    <span className="flex items-center text-green-600" title="Insured">
+                                        <ShieldCheckIcon />
+                                        <span className="text-xs font-medium ml-1">Insured</span>
+                                    </span>
+                                ) : (
+                                     <span className="flex items-center text-amber-600" title="Not Insured">
+                                        <ShieldExclamationIcon />
+                                        <span className="text-xs font-medium ml-1">Not Insured</span>
+                                    </span>
+                                )}
+                            </div>
                         </div>
                     </div>
                     <div className="flex items-center space-x-2">

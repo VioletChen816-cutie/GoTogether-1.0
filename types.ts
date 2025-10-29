@@ -42,6 +42,7 @@ export interface CarInfo {
   year?: number;
   color?: string;
   license_plate: string;
+  is_insured: boolean;
 }
 
 export interface Car extends CarInfo {

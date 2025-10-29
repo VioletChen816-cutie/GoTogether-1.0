@@ -126,7 +126,8 @@ create table cars (
     year integer,
     color text,
     license_plate text not null,
-    is_default boolean not null default false
+    is_default boolean not null default false,
+    is_insured boolean not null default false
 );
 
 -- 7. Set up RLS for Cars Table
@@ -179,7 +180,8 @@ create table rides (
     car_model text,
     car_year integer,
     car_color text,
-    car_license_plate text
+    car_license_plate text,
+    car_is_insured boolean not null default false
 );
 
 -- 10. Set up RLS for Rides Table

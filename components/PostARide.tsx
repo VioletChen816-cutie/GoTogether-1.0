@@ -21,7 +21,8 @@ const PostARide: React.FC<PostARideProps> = ({ onPostRide, onPostRideSuccess }) 
   
   const [cars, setCars] = useState<Car[]>([]);
   const [selectedCarOption, setSelectedCarOption] = useState('');
-  const [customCar, setCustomCar] = useState<CarInfo>({ make: '', model: '', year: new Date().getFullYear(), color: '', license_plate: '' });
+  // FIX: Added `is_insured` to the initial state to match the `CarInfo` type.
+  const [customCar, setCustomCar] = useState<CarInfo>({ make: '', model: '', year: new Date().getFullYear(), color: '', license_plate: '', is_insured: false });
 
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -162,9 +163,10 @@ const PostARide: React.FC<PostARideProps> = ({ onPostRide, onPostRideSuccess }) 
     }
   };
   
+  // FIX: Updated to handle checkbox inputs for the 'is_insured' field.
   const handleCustomCarChange = (e: ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setCustomCar(prev => ({ ...prev, [name]: name === 'year' ? parseInt(value, 10) : value }));
+    const { name, value, type, checked } = e.target;
+    setCustomCar(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : name === 'year' ? parseInt(value, 10) : value }));
   };
 
   const inputBaseClasses = "mt-1 block w-full pl-3 pr-10 py-2 text-base bg-slate-50 border-slate-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-lg disabled:bg-slate-200 disabled:cursor-not-allowed";
@@ -179,6 +181,20 @@ const PostARide: React.FC<PostARideProps> = ({ onPostRide, onPostRideSuccess }) 
             <div><label className="block text-xs font-medium text-slate-500">Year</label><input type="number" name="year" value={customCar.year} onChange={handleCustomCarChange} className={inputBaseClasses} /></div>
             <div><label className="block text-xs font-medium text-slate-500">Color</label><input type="text" name="color" value={customCar.color} onChange={handleCustomCarChange} className={inputBaseClasses} /></div>
             <div><label className="block text-xs font-medium text-slate-500">License Plate <span className="text-red-500">*</span></label><input type="text" name="license_plate" value={customCar.license_plate} onChange={handleCustomCarChange} className={inputBaseClasses} required /></div>
+        </div>
+        {/* FIX: Added an 'is_insured' checkbox to the custom car form. */}
+        <div className="flex items-center">
+            <input
+                id="custom_car_is_insured"
+                name="is_insured"
+                type="checkbox"
+                checked={customCar.is_insured}
+                onChange={handleCustomCarChange}
+                className="h-4 w-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500"
+            />
+            <label htmlFor="custom_car_is_insured" className="ml-3 block text-sm font-medium text-slate-700">
+                Is this car insured?
+            </label>
         </div>
     </div>
   );

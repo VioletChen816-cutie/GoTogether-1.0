@@ -1,5 +1,5 @@
 import React, { useState, useEffect, FormEvent } from 'react';
-import { Car, CarInfo } from '../types';
+import { Car } from '../types';
 
 interface CarFormModalProps {
   isOpen: boolean;
@@ -14,6 +14,7 @@ const CarFormModal: React.FC<CarFormModalProps> = ({ isOpen, onClose, onSubmit, 
   const [year, setYear] = useState<number | ''>(new Date().getFullYear());
   const [color, setColor] = useState('');
   const [licensePlate, setLicensePlate] = useState('');
+  const [isInsured, setIsInsured] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
 
   useEffect(() => {
@@ -23,6 +24,7 @@ const CarFormModal: React.FC<CarFormModalProps> = ({ isOpen, onClose, onSubmit, 
       setYear(carToEdit.year || '');
       setColor(carToEdit.color || '');
       setLicensePlate(carToEdit.license_plate);
+      setIsInsured(carToEdit.is_insured);
     } else {
       // Reset form when adding a new car
       setMake('');
@@ -30,6 +32,7 @@ const CarFormModal: React.FC<CarFormModalProps> = ({ isOpen, onClose, onSubmit, 
       setYear(new Date().getFullYear());
       setColor('');
       setLicensePlate('');
+      setIsInsured(false);
     }
   }, [carToEdit, isOpen]);
 
@@ -45,7 +48,8 @@ const CarFormModal: React.FC<CarFormModalProps> = ({ isOpen, onClose, onSubmit, 
         model, 
         year: year ? Number(year) : undefined, 
         color: color || undefined, 
-        license_plate: licensePlate 
+        license_plate: licensePlate,
+        is_insured: isInsured
     });
     setIsProcessing(false);
   };
@@ -89,6 +93,21 @@ const CarFormModal: React.FC<CarFormModalProps> = ({ isOpen, onClose, onSubmit, 
           <div>
             <label htmlFor="licensePlate" className="block text-sm font-medium text-slate-600">License Plate <span className="text-red-500">*</span></label>
             <input type="text" id="licensePlate" value={licensePlate} onChange={(e) => setLicensePlate(e.target.value.toUpperCase())} className={inputBaseClasses} placeholder="e.g., ABC-1234" required />
+          </div>
+          <div className="pt-2">
+            <div className="flex items-center">
+                <input
+                    id="isInsured"
+                    name="isInsured"
+                    type="checkbox"
+                    checked={isInsured}
+                    onChange={(e) => setIsInsured(e.target.checked)}
+                    className="h-4 w-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500"
+                />
+                <label htmlFor="isInsured" className="ml-3 block text-sm font-medium text-slate-700">
+                    Is this car insured?
+                </label>
+            </div>
           </div>
           <div className="pt-4 flex justify-end space-x-3">
             <button type="button" onClick={onClose} disabled={isProcessing} className="px-5 py-2 text-sm font-semibold bg-slate-100 text-slate-700 border border-slate-300 rounded-lg hover:bg-slate-200 transition-colors disabled:opacity-50">

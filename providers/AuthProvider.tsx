@@ -15,6 +15,8 @@ interface AuthContextType {
   closeAuthModal: () => void;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
+  authError: string;
+  setAuthError: React.Dispatch<React.SetStateAction<string>>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -25,6 +27,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [authError, setAuthError] = useState('');
 
   const fetchProfile = useCallback(async (user: User | null) => {
     if (!user) {
@@ -105,6 +108,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setSession(session);
       setUser(session?.user ?? null);
       await fetchProfile(session?.user ?? null);
+      // Clear error on successful sign-in or any other state change.
+      setAuthError('');
     });
 
     return () => {
@@ -119,19 +124,32 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   }, [user, fetchProfile]);
 
   const signOut = async () => {
-    if (!supabase) return;
-    const { error } = await supabase.auth.signOut();
-    if (error) {
-      console.error("Error signing out:", error);
-      // In a real app, you might want to show a notification.
-      return;
-    }
-    // Explicitly clear the session and profile state to ensure the UI updates immediately.
-    // The onAuthStateChange listener will also fire, but this prevents any delay.
+    // Clear the local state immediately to give the user instant feedback
+    // that they are logged out.
     setSession(null);
     setUser(null);
     setProfile(null);
+
+    if (!supabase) return;
+
+    // Attempt to sign out from Supabase to invalidate the session token.
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      // The user is already logged out from the app's perspective.
+      // We just log the server error for debugging.
+      console.error("Error signing out from Supabase:", error);
+    }
   };
+  
+  const openAuthModal = useCallback(() => {
+    setAuthError('');
+    setIsAuthModalOpen(true);
+  }, []);
+
+  const closeAuthModal = useCallback(() => {
+    setAuthError('');
+    setIsAuthModalOpen(false);
+  }, []);
 
   const value = {
     session,
@@ -139,10 +157,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     profile,
     loading,
     isAuthModalOpen,
-    openAuthModal: () => setIsAuthModalOpen(true),
-    closeAuthModal: () => setIsAuthModalOpen(false),
+    openAuthModal,
+    closeAuthModal,
     signOut,
-    refreshProfile
+    refreshProfile,
+    authError,
+    setAuthError
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

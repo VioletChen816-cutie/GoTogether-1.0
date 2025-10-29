@@ -23,6 +23,8 @@ export const INITIAL_RIDES: Ride[] = [
       // FIX: 'rating' does not exist on type 'Driver'. Changed to 'average_rating' and added 'rating_count' to conform to the type.
       average_rating: 4.9,
       rating_count: 25,
+      // FIX: Property 'is_verified_student' is missing in type '{ id: string; name: string; avatar_url: string; average_rating: number; rating_count: number; }' but required in type 'Driver'.
+      is_verified_student: true,
     },
     passengers: [],
     status: RideStatus.Active,
@@ -42,6 +44,8 @@ export const INITIAL_RIDES: Ride[] = [
       // FIX: 'rating' does not exist on type 'Driver'. Changed to 'average_rating' and added 'rating_count' to conform to the type.
       average_rating: 4.8,
       rating_count: 61,
+      // FIX: Property 'is_verified_student' is missing in type '{ id: string; name: string; avatar_url: string; average_rating: number; rating_count: number; }' but required in type 'Driver'.
+      is_verified_student: true,
     },
     passengers: [],
     status: RideStatus.Active,
@@ -61,6 +65,8 @@ export const INITIAL_RIDES: Ride[] = [
       // FIX: 'rating' does not exist on type 'Driver'. Changed to 'average_rating' and added 'rating_count' to conform to the type.
       average_rating: 5.0,
       rating_count: 12,
+      // FIX: Property 'is_verified_student' is missing in type '{ id: string; name: string; avatar_url: string; average_rating: number; rating_count: number; }' but required in type 'Driver'.
+      is_verified_student: false,
     },
     passengers: [],
     status: RideStatus.Active,
@@ -80,6 +86,8 @@ export const INITIAL_RIDES: Ride[] = [
       // FIX: 'rating' does not exist on type 'Driver'. Changed to 'average_rating' and added 'rating_count' to conform to the type.
       average_rating: 4.9,
       rating_count: 48,
+      // FIX: Property 'is_verified_student' is missing in type '{ id: string; name: string; avatar_url: string; average_rating: number; rating_count: number; }' but required in type 'Driver'.
+      is_verified_student: true,
     },
     passengers: [],
     status: RideStatus.Active,

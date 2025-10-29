@@ -5,7 +5,7 @@ export const getProfile = async (userId: string): Promise<Profile | null> => {
   if (!supabase) throw new Error('Supabase client not initialized');
   const { data, error } = await supabase
     .from('profiles')
-    .select('id, updated_at, full_name, avatar_url, phone_number, average_rating, rating_count')
+    .select('id, updated_at, full_name, avatar_url, phone_number, average_rating, rating_count, is_verified_student')
     .eq('id', userId)
     .single();
 

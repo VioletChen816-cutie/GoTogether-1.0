@@ -11,6 +11,7 @@ const TrashIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w
 const EditIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.536L16.732 3.732z" /></svg>;
 const ShieldCheckIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 20.944L12 22l9-1.056A12.02 12.02 0 0021 7.928a11.955 11.955 0 01-5.618-4.016z" /></svg>;
 const ShieldExclamationIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>;
+const VerifiedIcon = () => <svg className="w-4 h-4 mr-1 text-green-500" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"></path></svg>;
 
 const ProfileSettings: React.FC<{ backToApp: () => void }> = ({ backToApp }) => {
   const { user, profile, refreshProfile } = useAuth();
@@ -167,6 +168,13 @@ const ProfileSettings: React.FC<{ backToApp: () => void }> = ({ backToApp }) => 
             disabled
             className={`${inputBaseClasses} bg-slate-100 cursor-not-allowed`}
           />
+           {profile.is_verified_student ? (
+                <p className="mt-1 text-sm text-green-600 flex items-center font-medium">
+                    <VerifiedIcon /> Verified Student Email
+                </p>
+            ) : (
+                <p className="mt-1 text-xs text-slate-500">Tip: Use a .edu email to get a verified badge.</p>
+            )}
         </div>
 
         <div>

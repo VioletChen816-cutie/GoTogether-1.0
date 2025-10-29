@@ -13,6 +13,7 @@ export interface Profile {
   phone_number: string | null;
   average_rating: number;
   rating_count: number;
+  is_verified_student: boolean;
 }
 
 export interface Driver {
@@ -22,6 +23,7 @@ export interface Driver {
   average_rating: number;
   rating_count: number;
   phone_number?: string | null;
+  is_verified_student: boolean;
 }
 
 export enum RideStatus {

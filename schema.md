@@ -54,7 +54,8 @@ create table profiles (
   avatar_url text,
   phone_number text,
   average_rating numeric(2,1) not null default 0.0,
-  rating_count integer not null default 0
+  rating_count integer not null default 0,
+  is_verified_student boolean not null default false
 );
 
 -- 2. Set up Row Level Security (RLS) for profiles
@@ -90,11 +91,17 @@ create policy "Users can delete their own avatars." on storage.objects
 
 
 -- 4. Create a trigger that automatically creates a profile for new users.
-create function public.handle_new_user()
+create or replace function public.handle_new_user()
 returns trigger as $$
 begin
-  insert into public.profiles (id, full_name, avatar_url, phone_number)
-  values (new.id, new.raw_user_meta_data->>'full_name', new.raw_user_meta_data->>'avatar_url', new.raw_user_meta_data->>'phone_number');
+  insert into public.profiles (id, full_name, avatar_url, phone_number, is_verified_student)
+  values (
+    new.id,
+    new.raw_user_meta_data->>'full_name',
+    new.raw_user_meta_data->>'avatar_url',
+    new.raw_user_meta_data->>'phone_number',
+    (new.email like '%.edu') -- Sets to true if email ends with .edu
+  );
   return new;
 end;
 $$ language plpgsql security definer;

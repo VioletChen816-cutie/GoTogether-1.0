@@ -2,6 +2,7 @@ import { supabase } from '../lib/supabaseClient';
 import { Ride, Driver, Request, RequestStatus, Rating, CarInfo } from '../types';
 
 // FIX: Added 'car_is_insured' to the select query to fetch the car's insurance status.
+// FIX: Made joins explicit (e.g., profiles!driver_id) to prevent relationship detection errors.
 const rideSelectQuery = `
   id,
   from,
@@ -16,17 +17,18 @@ const rideSelectQuery = `
   car_color,
   car_license_plate,
   car_is_insured,
-  driver:driver_id (
+  driver:profiles!driver_id (
     id,
     full_name,
     avatar_url,
     average_rating,
     rating_count,
-    phone_number
+    phone_number,
+    is_verified_student
   ),
   requests (
     status,
-    passenger:passenger_id(id, full_name, avatar_url, average_rating, rating_count, phone_number)
+    passenger:profiles!passenger_id(id, full_name, avatar_url, average_rating, rating_count, phone_number, is_verified_student)
   ),
   ratings (
     rater_id,
@@ -36,6 +38,7 @@ const rideSelectQuery = `
 `;
 
 // FIX: Added 'car_is_insured' to the select query to fetch the car's insurance status.
+// FIX: Made driver join explicit (profiles!driver_id) to prevent relationship detection errors.
 const rideSelectQueryForRequest = `
   id,
   from,
@@ -50,13 +53,14 @@ const rideSelectQueryForRequest = `
   car_color,
   car_license_plate,
   car_is_insured,
-  driver:driver_id (
+  driver:profiles!driver_id (
     id,
     full_name,
     avatar_url,
     average_rating,
     rating_count,
-    phone_number
+    phone_number,
+    is_verified_student
   ),
   ratings (
     rater_id,
@@ -67,7 +71,7 @@ const rideSelectQueryForRequest = `
 
 const mapDriverData = (profile: any): Driver => {
     if (!profile) {
-        return { id: 'unknown', name: 'Unknown Driver', avatar_url: null, average_rating: 0, rating_count: 0, phone_number: null };
+        return { id: 'unknown', name: 'Unknown Driver', avatar_url: null, average_rating: 0, rating_count: 0, phone_number: null, is_verified_student: false };
     }
     return {
         id: profile.id,
@@ -76,6 +80,7 @@ const mapDriverData = (profile: any): Driver => {
         average_rating: profile.average_rating || 0,
         rating_count: profile.rating_count || 0,
         phone_number: profile.phone_number,
+        is_verified_student: profile.is_verified_student || false,
     };
 };
 
@@ -224,7 +229,7 @@ export const getPassengerRequests = async (): Promise<Request[]> => {
         .select(`
             id, created_at, status,
             rides ( ${rideSelectQueryForRequest} ),
-            profiles!passenger_id (id, full_name, avatar_url, average_rating, rating_count, phone_number)
+            profiles!passenger_id (id, full_name, avatar_url, average_rating, rating_count, phone_number, is_verified_student)
         `)
         .eq('passenger_id', user.id)
         .order('created_at', { ascending: false });
@@ -255,7 +260,7 @@ export const getDriverRequests = async (): Promise<Request[]> => {
         .select(`
             id, created_at, status,
             rides ( ${rideSelectQueryForRequest} ),
-            profiles!passenger_id (id, full_name, avatar_url, average_rating, rating_count, phone_number)
+            profiles!passenger_id (id, full_name, avatar_url, average_rating, rating_count, phone_number, is_verified_student)
         `)
         .in('ride_id', rideIds.map(r => r.id))
         .order('created_at', { ascending: false });

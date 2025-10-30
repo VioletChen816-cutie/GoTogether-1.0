@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { UserRole, Ride, Request, AppNotification } from '../types';
+import React, { useState, useEffect, useRef } from 'react';
+import { UserRole, Ride, Request, AppNotification, UserToRate } from '../types';
 import RoleSwitcher from './RoleSwitcher';
 import PassengerView from './PassengerView';
 import DriverView from './DriverView';
@@ -8,6 +8,9 @@ import { useAuth } from '../providers/AuthProvider';
 import { useNotification } from '../providers/NotificationProvider';
 import { supabase } from '../lib/supabaseClient';
 import RideConfirmationModal from './RideConfirmationModal';
+import RatingModal from './RatingModal';
+import RideCompletionModal from './RideCompletionModal';
+import { submitRating } from '../services/rideService';
 
 interface AuthenticatedAppProps {
     allRides: Ride[];
@@ -26,8 +29,33 @@ const AuthenticatedApp: React.FC<AuthenticatedAppProps & { view: 'app' | 'profil
     const { user } = useAuth();
     const { showNotification } = useNotification();
     const [confirmedRequest, setConfirmedRequest] = useState<Request | null>(null);
+    const [rideToShowCompletion, setRideToShowCompletion] = useState<Request | null>(null);
+    const rideCheckedRef = useRef(false);
 
-    const userPostedRides = driverRides;
+    // Centralized state for the rating modal
+    const [ratingModalState, setRatingModalState] = useState<{ isOpen: boolean; rideId: string; userToRate: UserToRate; } | null>(null);
+
+    const handleOpenRatingModal = (rideId: string, userToRate: UserToRate) => {
+        setRatingModalState({ isOpen: true, rideId, userToRate });
+    };
+
+    const handleRatingSubmit = async (rating: number, comment?: string) => {
+        if (!ratingModalState) return;
+        try {
+            await submitRating({
+                rideId: ratingModalState.rideId,
+                rateeId: ratingModalState.userToRate.id,
+                rating,
+                comment,
+            });
+            showNotification({ type: 'success', message: 'Your rating has been submitted!' });
+            refreshData();
+        } catch (error) {
+            showNotification({ type: 'error', message: 'Failed to submit rating.' });
+        } finally {
+            setRatingModalState(null);
+        }
+    };
     
     useEffect(() => {
         if (!user || !supabase) return;
@@ -47,17 +75,11 @@ const AuthenticatedApp: React.FC<AuthenticatedAppProps & { view: 'app' | 'profil
 
                     if (newStatus !== oldStatus) {
                         if (newStatus === 'accepted') {
-                            // This popup is now handled by the notification system, but we can still show the confirmation modal
-                            const confirmedReq = passengerRequests.find(r => r.id === payload.new.id) || 
-                                                 driverRequests.find(r => r.id === payload.new.id)?.ride.passengers.some(p => p.id === user.id) && driverRequests.find(r => r.id === payload.new.id);
-                            
                             const fullRequest = passengerRequests.find(r => r.id === payload.new.id);
-
                             if (fullRequest) {
                                 setConfirmedRequest(fullRequest);
                             }
                         }
-                        // Refresh data to update UI state immediately
                         refreshData();
                     }
                 }
@@ -68,6 +90,24 @@ const AuthenticatedApp: React.FC<AuthenticatedAppProps & { view: 'app' | 'profil
             supabase.removeChannel(channel);
         };
     }, [user, showNotification, refreshData, passengerRequests, driverRequests]);
+
+    // Check for completed rides to show the post-ride summary modal
+    useEffect(() => {
+        if (passengerRequests.length > 0 && user && !rideCheckedRef.current && role === UserRole.Passenger) {
+            const unratedCompletedRequest = passengerRequests.find(req =>
+                req.ride.status === 'completed' &&
+                !req.ride.ratings.some(r => r.rater_id === user.id && r.ratee_id === req.ride.driver.id)
+            );
+
+            if (unratedCompletedRequest) {
+                // Use a short timeout to prevent the modal from flashing aggressively on load
+                setTimeout(() => {
+                    setRideToShowCompletion(unratedCompletedRequest);
+                }, 500);
+            }
+            rideCheckedRef.current = true; // Mark as checked so it only runs once per session
+        }
+    }, [passengerRequests, user, role]);
 
     if (view === 'profile') {
         return <ProfileSettings backToApp={() => setView('app')} />;
@@ -82,24 +122,47 @@ const AuthenticatedApp: React.FC<AuthenticatedAppProps & { view: 'app' | 'profil
             <RoleSwitcher currentRole={role} onRoleChange={setRole} />
              <div className="mt-8">
                 {role === UserRole.Passenger ? (
-                    <PassengerView allRides={allRides} passengerRequests={passengerRequests} notifications={notifications} setNotifications={setNotifications} refreshData={refreshData} />
+                    <PassengerView
+                        allRides={allRides}
+                        passengerRequests={passengerRequests}
+                        notifications={notifications}
+                        setNotifications={setNotifications}
+                        refreshData={refreshData}
+                        onOpenRatingModal={handleOpenRatingModal}
+                    />
                 ) : (
                     <DriverView 
                         onPostRide={onPostRide}
-                        postedRides={userPostedRides}
+                        postedRides={driverRides}
                         driverRequests={driverRequests}
                         notifications={notifications}
                         refreshData={refreshData}
                         onAcceptRequest={setConfirmedRequest}
+                        onOpenRatingModal={handleOpenRatingModal}
                     />
                 )}
             </div>
             <RideConfirmationModal 
                 request={confirmedRequest}
-                // FIX: Type 'UserRole' is not assignable to type '"driver" | "passenger"'.
                 userRole={role === UserRole.Driver ? 'driver' : 'passenger'}
                 onClose={handleCloseConfirmation}
             />
+             <RideCompletionModal
+                request={rideToShowCompletion}
+                onClose={() => setRideToShowCompletion(null)}
+                onRateDriver={(rideId, userToRate) => {
+                    setRideToShowCompletion(null);
+                    handleOpenRatingModal(rideId, userToRate);
+                }}
+            />
+            {ratingModalState?.isOpen && (
+                <RatingModal
+                    isOpen={ratingModalState.isOpen}
+                    userToRate={ratingModalState.userToRate}
+                    onClose={() => setRatingModalState(null)}
+                    onSubmit={handleRatingSubmit}
+                />
+            )}
         </div>
     );
 };

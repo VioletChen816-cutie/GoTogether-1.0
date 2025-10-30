@@ -5,9 +5,8 @@ import Tabs from './Tabs';
 import PostARide from './PostARide';
 import RideCard from './RideCard';
 import RequestCard from './RequestCard';
-import { cancelRide, completeRide, submitRating, updateRequestStatus } from '../services/rideService';
+import { cancelRide, completeRide, updateRequestStatus } from '../services/rideService';
 import ConfirmationModal from './ConfirmationModal';
-import RatingModal from './RatingModal';
 import { useNotification } from '../providers/NotificationProvider';
 import { markRequestNotificationAsRead } from '../services/notificationService';
 
@@ -18,6 +17,7 @@ interface DriverViewProps {
   notifications: AppNotification[];
   refreshData: () => void;
   onAcceptRequest: (request: Request) => void;
+  onOpenRatingModal: (rideId: string, userToRate: UserToRate) => void;
 }
 
 const PlusIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>;
@@ -25,12 +25,11 @@ const UsersIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w
 const ListIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 10h16M4 14h16M4 18h16" /></svg>;
 const ClockIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>;
 
-const DriverView: React.FC<DriverViewProps> = ({ onPostRide, postedRides, driverRequests, notifications, refreshData, onAcceptRequest }) => {
+const DriverView: React.FC<DriverViewProps> = ({ onPostRide, postedRides, driverRequests, notifications, refreshData, onAcceptRequest, onOpenRatingModal }) => {
   const [activeTab, setActiveTab] = useState('Post Ride');
   const [cancellingId, setCancellingId] = useState<string | null>(null);
   const [completingId, setCompletingId] = useState<string | null>(null);
   const [rideToCancelId, setRideToCancelId] = useState<string | null>(null);
-  const [ratingModalState, setRatingModalState] = useState<{ isOpen: boolean; rideId: string; userToRate: UserToRate; } | null>(null);
   const { showNotification } = useNotification();
 
   const rideRequestsBadgeCount = useMemo(() => {
@@ -116,28 +115,6 @@ const DriverView: React.FC<DriverViewProps> = ({ onPostRide, postedRides, driver
     }
   };
   
-  const handleOpenRatingModal = (rideId: string, userToRate: UserToRate) => {
-    setRatingModalState({ isOpen: true, rideId, userToRate });
-  };
-  
-  const handleRatingSubmit = async (rating: number, comment?: string) => {
-    if (!ratingModalState) return;
-    try {
-      await submitRating({
-        rideId: ratingModalState.rideId,
-        rateeId: ratingModalState.userToRate.id,
-        rating,
-        comment,
-      });
-      showNotification({ type: 'success', message: 'Rating submitted!' });
-      refreshData();
-    } catch (error) {
-      showNotification({ type: 'error', message: 'Failed to submit rating.' });
-    } finally {
-      setRatingModalState(null);
-    }
-  };
-
   const pendingRequests = useMemo(() => {
     return driverRequests.filter(r => r.status === 'pending');
   }, [driverRequests]);
@@ -201,7 +178,7 @@ const DriverView: React.FC<DriverViewProps> = ({ onPostRide, postedRides, driver
                   key={ride.id}
                   ride={ride}
                   isDriverView={true}
-                  onRatePassenger={handleOpenRatingModal}
+                  onRatePassenger={onOpenRatingModal}
                   isHistoryView={true}
                 />
               ))
@@ -224,14 +201,6 @@ const DriverView: React.FC<DriverViewProps> = ({ onPostRide, postedRides, driver
         confirmText="Yes, Cancel Ride"
         isProcessing={!!cancellingId}
       />
-      {ratingModalState?.isOpen && (
-        <RatingModal
-          isOpen={ratingModalState.isOpen}
-          userToRate={ratingModalState.userToRate}
-          onClose={() => setRatingModalState(null)}
-          onSubmit={handleRatingSubmit}
-        />
-      )}
     </div>
   );
 };

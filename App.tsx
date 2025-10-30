@@ -132,7 +132,16 @@ const App: React.FC = () => {
                 setView={setView}
               />
             ) : (
-              <PassengerView allRides={rides} passengerRequests={[]} notifications={[]} refreshData={fetchData} />
+              // FIX: Provide a dummy onOpenRatingModal prop for the unauthenticated view.
+              // Rating is not possible for non-logged-in users, and the UI does not show the rate button,
+              // so a no-op function satisfies the prop type requirement.
+              <PassengerView
+                allRides={rides}
+                passengerRequests={[]}
+                notifications={[]}
+                refreshData={fetchData}
+                onOpenRatingModal={() => {}}
+              />
             )}
           </main>
         </div>

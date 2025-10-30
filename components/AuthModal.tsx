@@ -1,4 +1,4 @@
-import React, { useState, FormEvent, useEffect } from 'react';
+import React, { useState, FormEvent, useEffect, ChangeEvent } from 'react';
 import { useAuth } from '../providers/AuthProvider';
 import { supabase } from '../lib/supabaseClient';
 import TermsOfServiceModal from './TermsOfServiceModal';
@@ -28,6 +28,22 @@ const AuthModal: React.FC = () => {
       setIsSigningUp(false);
     }
   }, [isAuthModalOpen]);
+  
+  const handlePhoneNumberChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const input = e.target.value.replace(/\D/g, ''); // Remove all non-digit characters
+    let formattedNumber = '';
+
+    if (input.length > 0) {
+      formattedNumber = `(${input.substring(0, 3)}`;
+    }
+    if (input.length >= 4) {
+      formattedNumber += `) ${input.substring(3, 6)}`;
+    }
+    if (input.length >= 7) {
+      formattedNumber += `-${input.substring(6, 10)}`;
+    }
+    setPhoneNumber(formattedNumber);
+  };
 
   const handleAuthAction = async (e: FormEvent) => {
     e.preventDefault();
@@ -115,14 +131,18 @@ const AuthModal: React.FC = () => {
                     className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     required
                   />
-                  <input
-                    type="tel"
-                    placeholder="Phone Number"
-                    value={phoneNumber}
-                    onChange={(e) => setPhoneNumber(e.target.value)}
-                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    required
-                  />
+                  <div>
+                    <input
+                      type="tel"
+                      placeholder="Phone Number"
+                      value={phoneNumber}
+                      onChange={handlePhoneNumberChange}
+                      maxLength={14}
+                      className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      required
+                    />
+                    <p className="mt-1.5 text-xs text-slate-500 px-1">Please double-check your phone number — it will be shared with riders or drivers for coordination.</p>
+                  </div>
                 </>
               )}
               <input

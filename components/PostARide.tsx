@@ -1,7 +1,7 @@
 import React, { useState, FormEvent, ChangeEvent, useEffect, useMemo } from 'react';
-import { Ride, Car, CarInfo } from '../types';
+import { Ride, Car, CarInfo, PaymentMethodInfo } from '../types';
 import { LOCATIONS } from '../constants';
-import { getCarsForUser } from '../services/profileService';
+import { getCarsForUser, updateProfile, addCar } from '../services/profileService';
 import { useAuth } from '../providers/AuthProvider';
 
 interface PostARideProps {
@@ -9,11 +9,52 @@ interface PostARideProps {
   onPostRideSuccess: (success: boolean) => void;
 }
 
+const VenmoIcon = () => (
+    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-6 h-6 mr-2 flex-shrink-0">
+        <circle cx="12" cy="12" r="12" fill="#3D95CE"/>
+        <path d="M11.9999 5.25C11.9999 5.25 8.24219 16.793 6.98438 18.75H9.89297L11.4586 16.5117C11.4586 16.5117 12.5625 10.3125 12.5625 10.3125C12.5625 10.3125 13.6266 16.4906 13.6266 16.4906L15.1523 18.75H17.5781C16.3203 16.793 11.9999 5.25 11.9999 5.25Z" fill="white"/>
+    </svg>
+);
+
+const ZelleIcon = () => (
+    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-6 h-6 mr-2 flex-shrink-0">
+        <circle cx="12" cy="12" r="12" fill="#6D3582"/>
+        <path d="M7.5 7.5H16.5V9H10.5L16.5 15V16.5H7.5V15H13.5L7.5 9V7.5Z" fill="white"/>
+    </svg>
+);
+
+const CashAppIcon = () => (
+    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-6 h-6 mr-2 flex-shrink-0">
+        <circle cx="12" cy="12" r="12" fill="#00D632"/>
+        <path d="M12 6.5C10.65 6.5 9.5 7.65 9.5 9V9.5H8.5V11H9.5V13H8.5V14.5H9.5V15C9.5 16.35 10.65 17.5 12 17.5C13.35 17.5 14.5 16.35 14.5 15V14.5H15.5V13H14.5V11H15.5V9.5H14.5V9C14.5 7.65 13.35 6.5 12 6.5ZM11 8H13C13.55 8 14 8.45 14 9V15C14 15.55 13.55 16 13 16H11C10.45 16 10 15.55 10 15V9C10 8.45 10.45 8 11 8Z" fill="white"/>
+        <path d="M12 5V6.5M12 17.5V19" stroke="white" strokeWidth="1.5" strokeLinecap="round"/>
+    </svg>
+);
+
+
+type PaymentMethodType = 'venmo' | 'zelle' | 'cashapp';
+
+const paymentOptions: { id: PaymentMethodType, name: string, placeholder: string, icon: React.ReactElement }[] = [
+    { id: 'venmo', name: 'Venmo', placeholder: 'Enter your Venmo username or link', icon: <VenmoIcon /> },
+    { id: 'zelle', name: 'Zelle', placeholder: 'Enter your registered email or phone', icon: <ZelleIcon /> },
+    { id: 'cashapp', name: 'Cash App', placeholder: 'Enter your $Cashtag or link', icon: <CashAppIcon /> },
+];
+
+
 const PostARide: React.FC<PostARideProps> = ({ onPostRide, onPostRideSuccess }) => {
-  const { user } = useAuth();
+  const { user, profile, refreshProfile } = useAuth();
+  
+  const getTodayLocal = () => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = (now.getMonth() + 1).toString().padStart(2, '0');
+    const day = now.getDate().toString().padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
-  const [departureDate, setDepartureDate] = useState(new Date().toISOString().split('T')[0]);
+  const [departureDate, setDepartureDate] = useState(getTodayLocal);
   const [departureTimeValue, setDepartureTimeValue] = useState('');
   const [seatsAvailable, setSeatsAvailable] = useState(1);
   const [price, setPrice] = useState(10);
@@ -21,12 +62,26 @@ const PostARide: React.FC<PostARideProps> = ({ onPostRide, onPostRideSuccess }) 
   
   const [cars, setCars] = useState<Car[]>([]);
   const [selectedCarOption, setSelectedCarOption] = useState('');
-  // FIX: Added `is_insured` to the initial state to match the `CarInfo` type.
   const [customCar, setCustomCar] = useState<CarInfo>({ make: '', model: '', year: new Date().getFullYear(), color: '', license_plate: '', is_insured: false });
+  const [saveCustomCar, setSaveCustomCar] = useState(true);
+
+  // Payment State
+  const [paymentMethods, setPaymentMethods] = useState<PaymentMethodInfo[]>([]);
+  const [forceEditPayments, setForceEditPayments] = useState(false);
 
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+
+  const hasSavedMethods = useMemo(() => profile?.payment_methods && profile.payment_methods.length > 0, [profile]);
+  const showPaymentEditor = !hasSavedMethods || forceEditPayments;
+  
+  const handleCancelEditPayments = () => {
+    setForceEditPayments(false);
+    if (profile?.payment_methods) {
+        setPaymentMethods(profile.payment_methods);
+    }
+  };
 
   useEffect(() => {
     const fetchUserCars = async () => {
@@ -44,6 +99,12 @@ const PostARide: React.FC<PostARideProps> = ({ onPostRide, onPostRideSuccess }) 
     };
     fetchUserCars();
   }, [user]);
+
+  useEffect(() => {
+    if (profile?.payment_methods) {
+        setPaymentMethods(profile.payment_methods);
+    }
+  }, [profile]);
   
   const timeOptions = useMemo(() => {
     const options: { value: string; label: string }[] = [];
@@ -60,46 +121,59 @@ const PostARide: React.FC<PostARideProps> = ({ onPostRide, onPostRideSuccess }) 
   }, []);
 
   const filteredTimeOptions = useMemo(() => {
-    const todayISO = new Date().toISOString().split('T')[0];
-    if (departureDate !== todayISO) {
+    const now = new Date();
+    const todayLocal = `${now.getFullYear()}-${(now.getMonth() + 1).toString().padStart(2, '0')}-${now.getDate().toString().padStart(2, '0')}`;
+
+    if (departureDate !== todayLocal) {
       return timeOptions;
     }
-    
-    const now = new Date();
-    // Round up to the next 5-minute interval for comparison
-    const roundedMinutes = Math.ceil(now.getMinutes() / 5) * 5;
-    const roundedDate = new Date();
-    roundedDate.setMinutes(roundedMinutes);
-    
-    const currentTime = `${roundedDate.getHours().toString().padStart(2, '0')}:${roundedDate.getMinutes().toString().padStart(2, '0')}`;
 
-    return timeOptions.filter(option => option.value >= currentTime);
+    // Calculate the total number of minutes that have passed today.
+    const totalMinutesPassed = now.getHours() * 60 + now.getMinutes();
+    
+    // Find the index of the current 5-minute interval, and add 1 to get the next one.
+    // This ensures we always offer a time in the future.
+    const nextIntervalIndex = Math.floor(totalMinutesPassed / 5) + 1;
+    
+    // Calculate the minutes for the start of the next interval.
+    const nextIntervalTotalMinutes = nextIntervalIndex * 5;
+    
+    const nextAvailableHour = Math.floor(nextIntervalTotalMinutes / 60);
+    const nextAvailableMinute = nextIntervalTotalMinutes % 60;
+    
+    // If the next available time is on the next day, there are no more slots for today.
+    if (nextAvailableHour >= 24) {
+        return [];
+    }
+
+    const firstAvailableTime = `${nextAvailableHour.toString().padStart(2, '0')}:${nextAvailableMinute.toString().padStart(2, '0')}`;
+
+    return timeOptions.filter(option => option.value >= firstAvailableTime);
   }, [departureDate, timeOptions]);
 
-  // Effect to handle time selection when date changes, ensuring an invalid time isn't kept.
   useEffect(() => {
     const isValidTimeSelected = filteredTimeOptions.some(option => option.value === departureTimeValue);
     if (!isValidTimeSelected) {
-      // Auto-select the first available time, or clear if none are available
       setDepartureTimeValue(filteredTimeOptions.length > 0 ? filteredTimeOptions[0].value : '');
     }
-  }, [departureDate, filteredTimeOptions]);
+  }, [departureDate, filteredTimeOptions, departureTimeValue]);
 
   const clearForm = () => {
     setFrom('');
     setTo('');
-    setDepartureDate(new Date().toISOString().split('T')[0]);
+    setDepartureDate(getTodayLocal());
     setDepartureTimeValue('');
     setSeatsAvailable(1);
     setPrice(10);
     setIsFree(false);
     setError('');
-    // Don't clear car selection, user might want to post another ride with same car
+    setSaveCustomCar(true);
+    setForceEditPayments(false);
   };
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (isLoading) return;
+    if (isLoading || !user || !profile) return;
     
     setError('');
     setSuccess('');
@@ -110,6 +184,15 @@ const PostARide: React.FC<PostARideProps> = ({ onPostRide, onPostRideSuccess }) 
     }
     if (from === to) {
         setError('Start and end locations cannot be the same.');
+        return;
+    }
+
+    if (!isFree && paymentMethods.some(pm => !pm.handle.trim())) {
+        setError('Please fill in the details for all selected payment methods.');
+        return;
+    }
+     if (!isFree && paymentMethods.length === 0) {
+        setError('Please add at least one payment method.');
         return;
     }
 
@@ -136,20 +219,50 @@ const PostARide: React.FC<PostARideProps> = ({ onPostRide, onPostRideSuccess }) 
 
     setIsLoading(true);
 
-    const ridePosted = await onPostRide({
-      from,
-      to,
-      departureTime: new Date(`${departureDate}T${departureTimeValue}`),
-      seatsAvailable,
-      price,
-      car: carInfo,
-    });
-    
-    setIsLoading(false);
-    if (ridePosted) {
-      setSuccess('Ride posted successfully!');
-      clearForm();
-      setTimeout(() => onPostRideSuccess(true), 1000);
+    try {
+        const originalMethods = profile.payment_methods || [];
+        const methodsChanged =
+          originalMethods.length !== paymentMethods.length ||
+          !originalMethods.every(om =>
+            paymentMethods.some(pm => pm.method === om.method && pm.handle === om.handle)
+          );
+
+        if (methodsChanged) {
+            await updateProfile(user.id, {
+                // Pass existing values to avoid overwriting them with null
+                full_name: profile.full_name,
+                avatar_url: profile.avatar_url,
+                phone_number: profile.phone_number,
+                payment_methods: isFree ? [] : paymentMethods,
+            });
+            await refreshProfile(); // Refresh context
+        }
+
+        if (selectedCarOption === 'custom' && saveCustomCar) {
+            const savedCar = await addCar(customCar);
+            setCars(prev => [...prev, savedCar]);
+            setSelectedCarOption(savedCar.id);
+            carInfo = savedCar;
+        }
+
+        const ridePosted = await onPostRide({
+          from,
+          to,
+          departureTime: new Date(`${departureDate}T${departureTimeValue}`),
+          seatsAvailable,
+          price,
+          car: carInfo,
+        });
+        
+        if (ridePosted) {
+          setSuccess('Ride posted successfully!');
+          clearForm();
+          setTimeout(() => onPostRideSuccess(true), 1000);
+        }
+    } catch (err: any) {
+        setError(err.message || 'An unexpected error occurred.');
+    } finally {
+        setIsLoading(false);
     }
   };
   
@@ -159,14 +272,27 @@ const PostARide: React.FC<PostARideProps> = ({ onPostRide, onPostRideSuccess }) 
     if (checked) {
       setPrice(0);
     } else {
-      setPrice(10); // Reset to a default value when unchecked
+      setPrice(10);
     }
   };
   
-  // FIX: Updated to handle checkbox inputs for the 'is_insured' field.
   const handleCustomCarChange = (e: ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target;
     setCustomCar(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : name === 'year' ? parseInt(value, 10) : value }));
+  };
+
+  const handleAddPaymentMethod = (method: PaymentMethodType) => {
+    if (paymentMethods.length < 3 && !paymentMethods.some(pm => pm.method === method)) {
+        setPaymentMethods(prev => [...prev, { method, handle: '' }]);
+    }
+  };
+
+  const handleRemovePaymentMethod = (method: PaymentMethodType) => {
+      setPaymentMethods(prev => prev.filter(pm => pm.method !== method));
+  };
+
+  const handlePaymentHandleChange = (method: PaymentMethodType, handle: string) => {
+      setPaymentMethods(prev => prev.map(pm => pm.method === method ? { ...pm, handle } : pm));
   };
 
   const inputBaseClasses = "mt-1 block w-full pl-3 pr-10 py-2 text-base bg-slate-50 border-slate-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-lg disabled:bg-slate-200 disabled:cursor-not-allowed";
@@ -182,7 +308,6 @@ const PostARide: React.FC<PostARideProps> = ({ onPostRide, onPostRideSuccess }) 
             <div><label className="block text-xs font-medium text-slate-500">Color</label><input type="text" name="color" value={customCar.color} onChange={handleCustomCarChange} className={inputBaseClasses} /></div>
             <div><label className="block text-xs font-medium text-slate-500">License Plate <span className="text-red-500">*</span></label><input type="text" name="license_plate" value={customCar.license_plate} onChange={handleCustomCarChange} className={inputBaseClasses} required /></div>
         </div>
-        {/* FIX: Added an 'is_insured' checkbox to the custom car form. */}
         <div className="flex items-center">
             <input
                 id="custom_car_is_insured"
@@ -196,8 +321,105 @@ const PostARide: React.FC<PostARideProps> = ({ onPostRide, onPostRideSuccess }) 
                 Is this car insured?
             </label>
         </div>
+         <div className="flex items-center pt-2">
+            <input
+                id="save_custom_car"
+                name="save_custom_car"
+                type="checkbox"
+                checked={saveCustomCar}
+                onChange={(e) => setSaveCustomCar(e.target.checked)}
+                className="h-4 w-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500"
+            />
+            <label htmlFor="save_custom_car" className="ml-3 block text-sm font-medium text-slate-700">
+                Save this vehicle for future use
+            </label>
+        </div>
     </div>
   );
+
+  const renderPaymentSelection = () => {
+    const selectedMethodsMap = new Map(paymentMethods.map(pm => [pm.method, pm.handle]));
+    const canAddMore = paymentMethods.length < 3;
+
+    return (
+        <div className="p-4 bg-slate-50 rounded-lg space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {paymentOptions.map(opt => {
+                    const isSelected = selectedMethodsMap.has(opt.id);
+                    return (
+                        <button
+                            key={opt.id}
+                            type="button"
+                            onClick={() => {
+                                if (!isSelected) handleAddPaymentMethod(opt.id);
+                            }}
+                            className={`flex items-center justify-start p-3 rounded-lg border-2 text-left font-semibold transition-all ${
+                                isSelected 
+                                ? 'bg-blue-50 border-blue-500 cursor-default' 
+                                : canAddMore 
+                                    ? 'bg-white border-slate-300 hover:border-blue-400' 
+                                    : 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed'
+                            }`}
+                            disabled={isSelected || !canAddMore}
+                            title={!canAddMore && !isSelected ? "You can add up to 3 payment methods" : ""}
+                        >
+                            {opt.icon}
+                            <span className="text-slate-800">{opt.name}</span>
+                            {isSelected && <svg className="w-5 h-5 ml-auto text-blue-500" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"></path></svg>}
+                            {!isSelected && canAddMore && <span className="ml-auto text-xs font-bold text-blue-500">+ ADD</span>}
+                        </button>
+                    );
+                })}
+            </div>
+            
+            {paymentMethods.length > 0 && (
+                <div className="space-y-4 pt-4 border-t border-slate-200">
+                    {paymentMethods.map(pm => {
+                        const option = paymentOptions.find(p => p.id === pm.method);
+                        if (!option) return null;
+                        return (
+                            <div key={pm.method}>
+                                <label className="flex items-center text-sm font-medium text-slate-600 capitalize">
+                                    {option.icon}
+                                    <span>{option.name}</span>
+                                </label>
+                                <div className="mt-1 flex">
+                                    <input
+                                        type="text"
+                                        value={pm.handle}
+                                        onChange={(e) => handlePaymentHandleChange(pm.method, e.target.value)}
+                                        placeholder={option.placeholder}
+                                        className="block w-full text-base bg-white border-slate-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-l-lg"
+                                        required
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => handleRemovePaymentMethod(pm.method)}
+                                        className="inline-flex items-center px-3 rounded-r-lg border border-l-0 border-slate-300 bg-slate-100 text-slate-500 hover:bg-slate-200 text-sm font-semibold"
+                                    >
+                                        Remove
+                                    </button>
+                                </div>
+                            </div>
+                        )
+                    })}
+                     <p className="text-xs text-slate-500 px-1">Changes here will update your profile and be saved for future rides.</p>
+                </div>
+            )}
+            {hasSavedMethods && forceEditPayments && (
+                <div className={`pt-4 ${paymentMethods.length > 0 ? 'border-t border-slate-200' : ''} flex justify-end`}>
+                    <button
+                        type="button"
+                        onClick={handleCancelEditPayments}
+                        className="px-4 py-2 text-sm font-semibold text-slate-600 bg-white border border-slate-300 rounded-lg hover:bg-slate-50"
+                    >
+                        Use Saved Methods
+                    </button>
+                </div>
+            )}
+        </div>
+    );
+};
 
   return (
     <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-200">
@@ -223,7 +445,7 @@ const PostARide: React.FC<PostARideProps> = ({ onPostRide, onPostRideSuccess }) 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-6 items-end">
           <div className="col-span-1">
             <label htmlFor="departure-date" className="block text-sm font-medium text-slate-600">Date</label>
-            <input type="date" id="departure-date" value={departureDate} onChange={(e) => setDepartureDate(e.target.value)} className={`${inputBaseClasses} py-[7px]`} min={new Date().toISOString().split('T')[0]} required />
+            <input type="date" id="departure-date" value={departureDate} onChange={(e) => setDepartureDate(e.target.value)} className={`${inputBaseClasses} py-[7px]`} min={getTodayLocal()} required />
           </div>
           <div className="col-span-1">
             <label htmlFor="departure-time-select" className="block text-sm font-medium text-slate-600">Time</label>
@@ -251,6 +473,44 @@ const PostARide: React.FC<PostARideProps> = ({ onPostRide, onPostRideSuccess }) 
             <input type="number" id="price" value={price} onChange={(e) => setPrice(Math.max(0, parseInt(e.target.value, 10)))} min="0" disabled={isFree} className={`${inputBaseClasses} py-[7px]`} />
           </div>
         </div>
+
+        {/* Payment Details */}
+        {!isFree && (
+            <div>
+                <h3 className="text-md font-semibold text-slate-700">
+                    {showPaymentEditor ? '💰 How do you want passengers to send you the fare?' : '💰 Payment Methods'}
+                </h3>
+                <div className="mt-2">
+                    {showPaymentEditor ? (
+                        renderPaymentSelection()
+                    ) : (
+                        <div className="p-4 bg-slate-50 rounded-lg">
+                            <div className="flex items-start justify-between">
+                                <div>
+                                    <p className="text-sm text-slate-600 mb-3">Using your saved payment methods:</p>
+                                    <div className="flex flex-wrap gap-2">
+                                        {profile?.payment_methods?.map(pm => {
+                                            const option = paymentOptions.find(p => p.id === pm.method);
+                                            if (!option) return null;
+                                            return (
+                                                <div key={pm.method} className="flex items-center p-2 bg-white rounded-md border border-slate-200">
+                                                    {option.icon}
+                                                    <span className="font-semibold text-slate-700">{option.name}</span>
+                                                </div>
+                                            )
+                                        })}
+                                    </div>
+                                </div>
+                                <button type="button" onClick={() => setForceEditPayments(true)} className="text-sm font-semibold text-blue-500 hover:underline flex-shrink-0 ml-4">
+                                    Edit
+                                </button>
+                            </div>
+                             <p className="text-xs text-slate-500 mt-3">Passengers can view these after their request is accepted.</p>
+                        </div>
+                    )}
+                </div>
+            </div>
+        )}
 
         {/* Vehicle Details */}
         <div>

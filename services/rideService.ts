@@ -24,7 +24,7 @@ const rideSelectQuery = `
     average_rating,
     rating_count,
     phone_number,
-    payment_info,
+    payment_methods,
     is_verified_student
   ),
   requests (
@@ -61,7 +61,7 @@ const rideSelectQueryForRequest = `
     average_rating,
     rating_count,
     phone_number,
-    payment_info,
+    payment_methods,
     is_verified_student
   ),
   ratings (
@@ -73,7 +73,7 @@ const rideSelectQueryForRequest = `
 
 const mapDriverData = (profile: any): Driver => {
     if (!profile) {
-        return { id: 'unknown', name: 'Unknown Driver', avatar_url: null, average_rating: 0, rating_count: 0, phone_number: null, payment_info: null, is_verified_student: false };
+        return { id: 'unknown', name: 'Unknown Driver', avatar_url: null, average_rating: 0, rating_count: 0, phone_number: null, payment_methods: null, is_verified_student: false };
     }
     return {
         id: profile.id,
@@ -82,7 +82,7 @@ const mapDriverData = (profile: any): Driver => {
         average_rating: profile.average_rating || 0,
         rating_count: profile.rating_count || 0,
         phone_number: profile.phone_number,
-        payment_info: profile.payment_info,
+        payment_methods: profile.payment_methods,
         is_verified_student: profile.is_verified_student || false,
     };
 };

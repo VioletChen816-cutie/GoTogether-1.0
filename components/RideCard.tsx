@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { Ride, RequestStatus, Driver, RideStatus, UserToRate } from '../types';
 import { useAuth } from '../providers/AuthProvider';
-import { useNotification } from '../providers/NotificationProvider';
 import { requestRide } from '../services/rideService';
 import ProfileModal from './ProfileModal';
+import PaymentInfoModal from './PaymentInfoModal';
 import ContactActions from './ContactActions';
 
 interface RideCardProps {
@@ -25,6 +25,9 @@ const VerifiedBadge: React.FC<{className?: string}> = ({className}) => (
         Verified
     </span>
 );
+
+const ShieldCheckIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 20.944L12 22l9-1.056A12.02 12.02 0 0021 7.928a11.955 11.955 0 01-5.618-4.016z" /></svg>;
+const ShieldExclamationIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>;
 
 const CarIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-slate-500" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10 2a2 2 0 00-2 2v1H6a2 2 0 00-2 2v7a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2V4a2 2 0 00-2-2zm-1 3V4a1 1 0 112 0v1h-2zM6 8a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h4a1 1 0 100-2H7z" clipRule="evenodd" /></svg>;
 
@@ -142,10 +145,10 @@ const PassengerList: React.FC<{
 
 const RideCard: React.FC<RideCardProps> = ({ ride, requestStatus, refreshData, isDriverView = false, onCancel, onComplete, onRateDriver, onRatePassenger, isProcessing = false, isHistoryView = false }) => {
   const { user, openAuthModal } = useAuth();
-  const { showNotification } = useNotification();
   const { from, to, departureTime, seatsAvailable, driver, price, passengers, status, ratings, car } = ride;
   const [isLoading, setIsLoading] = useState(false);
   const [viewingProfile, setViewingProfile] = useState<Driver | null>(null);
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const isFull = seatsAvailable === 0;
   const isOwnRide = user?.id === ride.driver.id;
   const isPast = ride.departureTime.getTime() < Date.now();
@@ -176,16 +179,6 @@ const RideCard: React.FC<RideCardProps> = ({ ride, requestStatus, refreshData, i
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const handleCopyPaymentInfo = () => {
-    if (!driver.payment_info) return;
-    navigator.clipboard.writeText(driver.payment_info).then(() => {
-        showNotification({ type: 'success', message: 'Payment info copied!' });
-    }).catch(err => {
-        console.error('Failed to copy info: ', err);
-        showNotification({ type: 'error', message: 'Could not copy info.' });
-    });
   };
 
   const getButtonState = () => {
@@ -287,7 +280,7 @@ const RideCard: React.FC<RideCardProps> = ({ ride, requestStatus, refreshData, i
   const shouldShowRatePassengersSection = isDriverView && status === RideStatus.Completed && passengers.length > 0;
   
   const shouldShowDisclaimer = status === RideStatus.Active;
-  const shouldShowCopyButton = user && driver.payment_info && !isDriverView && status === RideStatus.Completed;
+  const shouldShowCopyButton = user && driver.payment_methods && driver.payment_methods.length > 0 && !isDriverView && status === RideStatus.Completed && isHistoryView;
 
   return (
     <>
@@ -304,9 +297,22 @@ const RideCard: React.FC<RideCardProps> = ({ ride, requestStatus, refreshData, i
                 <p className="text-slate-500 text-sm">to</p>
                 <p className="font-bold text-xl text-slate-800">{to}</p>
                 {car && (
-                  <p className="text-sm text-slate-500 mt-1">
-                    🚗 {car.color ? `${car.color} ` : ''}{car.make} {car.model}
-                  </p>
+                  <div className="flex items-center space-x-3 mt-1 text-sm text-slate-500">
+                    <span>
+                      🚗 {car.color ? `${car.color} ` : ''}{car.make} {car.model}
+                    </span>
+                    {car.is_insured ? (
+                        <span className="flex items-center text-green-600" title="Insured">
+                            <ShieldCheckIcon />
+                            <span className="text-xs font-medium ml-1">Insured</span>
+                        </span>
+                    ) : (
+                         <span className="flex items-center text-amber-600" title="Not Insured">
+                            <ShieldExclamationIcon />
+                            <span className="text-xs font-medium ml-1">Not Insured</span>
+                        </span>
+                    )}
+                  </div>
                 )}
               </div>
             </div>
@@ -419,7 +425,7 @@ const RideCard: React.FC<RideCardProps> = ({ ride, requestStatus, refreshData, i
                       )}
                       {shouldShowCopyButton && (
                           <button 
-                              onClick={handleCopyPaymentInfo}
+                              onClick={() => setIsPaymentModalOpen(true)}
                               className="flex items-center space-x-1.5 px-3 py-1.5 text-xs font-semibold bg-white text-blue-600 border border-slate-300 rounded-full hover:bg-slate-100 transition-colors"
                           >
                               <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
@@ -438,6 +444,11 @@ const RideCard: React.FC<RideCardProps> = ({ ride, requestStatus, refreshData, i
         </div>
       </div>
       <ProfileModal profile={viewingProfile} onClose={() => setViewingProfile(null)} />
+      <PaymentInfoModal 
+        isOpen={isPaymentModalOpen}
+        onClose={() => setIsPaymentModalOpen(false)}
+        driver={driver}
+      />
     </>
   );
 };

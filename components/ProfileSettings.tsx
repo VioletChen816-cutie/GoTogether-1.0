@@ -1,8 +1,39 @@
 import React, { useState, useEffect, FormEvent, ChangeEvent, useCallback } from 'react';
 import { useAuth } from '../providers/AuthProvider';
 import { updateProfile, uploadAvatar, getCarsForUser, addCar, updateCar, deleteCar, setDefaultCar } from '../services/profileService';
-import { Car } from '../types';
+import { Car, PaymentMethodInfo } from '../types';
 import CarFormModal from './CarFormModal';
+
+type PaymentMethodType = 'venmo' | 'zelle' | 'cashapp';
+
+const VenmoIcon = () => (
+    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-6 h-6 mr-2 flex-shrink-0">
+        <circle cx="12" cy="12" r="12" fill="#3D95CE"/>
+        <path d="M11.9999 5.25C11.9999 5.25 8.24219 16.793 6.98438 18.75H9.89297L11.4586 16.5117C11.4586 16.5117 12.5625 10.3125 12.5625 10.3125C12.5625 10.3125 13.6266 16.4906 13.6266 16.4906L15.1523 18.75H17.5781C16.3203 16.793 11.9999 5.25 11.9999 5.25Z" fill="white"/>
+    </svg>
+);
+
+const ZelleIcon = () => (
+    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-6 h-6 mr-2 flex-shrink-0">
+        <circle cx="12" cy="12" r="12" fill="#6D3582"/>
+        <path d="M7.5 7.5H16.5V9H10.5L16.5 15V16.5H7.5V15H13.5L7.5 9V7.5Z" fill="white"/>
+    </svg>
+);
+
+const CashAppIcon = () => (
+    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-6 h-6 mr-2 flex-shrink-0">
+        <circle cx="12" cy="12" r="12" fill="#00D632"/>
+        <path d="M12 6.5C10.65 6.5 9.5 7.65 9.5 9V9.5H8.5V11H9.5V13H8.5V14.5H9.5V15C9.5 16.35 10.65 17.5 12 17.5C13.35 17.5 14.5 16.35 14.5 15V14.5H15.5V13H14.5V11H15.5V9.5H14.5V9C14.5 7.65 13.35 6.5 12 6.5ZM11 8H13C13.55 8 14 8.45 14 9V15C14 15.55 13.55 16 13 16H11C10.45 16 10 15.55 10 15V9C10 8.45 10.45 8 11 8Z" fill="white"/>
+        <path d="M12 5V6.5M12 17.5V19" stroke="white" strokeWidth="1.5" strokeLinecap="round"/>
+    </svg>
+);
+
+
+const paymentOptions: { id: PaymentMethodType, name: string, placeholder: string, icon: React.ReactElement }[] = [
+    { id: 'venmo', name: 'Venmo', placeholder: 'Enter your Venmo username or link', icon: <VenmoIcon /> },
+    { id: 'zelle', name: 'Zelle', placeholder: 'Enter your registered email or phone', icon: <ZelleIcon /> },
+    { id: 'cashapp', name: 'Cash App', placeholder: 'Enter your $Cashtag or link', icon: <CashAppIcon /> },
+];
 
 const CarIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-slate-500" viewBox="0 0 24 24" fill="currentColor">
     <path d="M19.383 6.634A.5.5 0 0 1 19 7v9a3 3 0 0 1-6 0v-1h-4v1a3 3 0 0 1-6 0V7a.5.5 0 0 1 .617-.492L5 7.15V4.5a.5.5 0 0 1 .5-.5h13a.5.5 0 0 1 .5.5v2.65l1.383-.617zM5.5 14a1 1 0 1 0 0 2 1 1 0 0 0 0-2zm12 0a1 1 0 1 0 0 2 1 1 0 0 0 0-2z"/>
@@ -17,12 +48,14 @@ const ProfileSettings: React.FC<{ backToApp: () => void }> = ({ backToApp }) => 
   const { user, profile, refreshProfile } = useAuth();
   const [fullName, setFullName] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
-  const [paymentInfo, setPaymentInfo] = useState('');
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+
+  // Payment state
+  const [paymentMethods, setPaymentMethods] = useState<PaymentMethodInfo[]>([]);
 
   // Car state
   const [cars, setCars] = useState<Car[]>([]);
@@ -40,8 +73,8 @@ const ProfileSettings: React.FC<{ backToApp: () => void }> = ({ backToApp }) => 
     if (profile) {
       setFullName(profile.full_name || '');
       setPhoneNumber(profile.phone_number || '');
-      setPaymentInfo(profile.payment_info || '');
       setAvatarPreview(profile.avatar_url || null);
+      setPaymentMethods(profile.payment_methods || []);
     }
     fetchCars();
   }, [profile, fetchCars]);
@@ -54,6 +87,22 @@ const ProfileSettings: React.FC<{ backToApp: () => void }> = ({ backToApp }) => 
       setAvatarPreview(previewUrl);
     }
   };
+  
+  const handlePhoneNumberChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const input = e.target.value.replace(/\D/g, ''); // Remove all non-digit characters
+    let formattedNumber = '';
+
+    if (input.length > 0) {
+      formattedNumber = `(${input.substring(0, 3)}`;
+    }
+    if (input.length >= 4) {
+      formattedNumber += `) ${input.substring(3, 6)}`;
+    }
+    if (input.length >= 7) {
+      formattedNumber += `-${input.substring(6, 10)}`;
+    }
+    setPhoneNumber(formattedNumber);
+  };
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -61,6 +110,12 @@ const ProfileSettings: React.FC<{ backToApp: () => void }> = ({ backToApp }) => 
     
     if (!fullName.trim() || !phoneNumber.trim()) {
       setError('Full name and phone number are required.');
+      setSuccess('');
+      return;
+    }
+
+    if (paymentMethods.some(pm => !pm.handle.trim())) {
+      setError('Please fill in the details for all selected payment methods or remove them.');
       setSuccess('');
       return;
     }
@@ -80,7 +135,7 @@ const ProfileSettings: React.FC<{ backToApp: () => void }> = ({ backToApp }) => 
         full_name: fullName, 
         avatar_url: avatarUrl, 
         phone_number: phoneNumber,
-        payment_info: paymentInfo,
+        payment_methods: paymentMethods,
       });
       await refreshProfile();
       setSuccess('Profile updated successfully!');
@@ -91,6 +146,20 @@ const ProfileSettings: React.FC<{ backToApp: () => void }> = ({ backToApp }) => 
       setLoading(false);
       setAvatarFile(null);
     }
+  };
+  
+  const handleAddPaymentMethod = (method: PaymentMethodType) => {
+    if (paymentMethods.length < 3 && !paymentMethods.some(pm => pm.method === method)) {
+        setPaymentMethods(prev => [...prev, { method, handle: '' }]);
+    }
+  };
+
+  const handleRemovePaymentMethod = (method: PaymentMethodType) => {
+      setPaymentMethods(prev => prev.filter(pm => pm.method !== method));
+  };
+
+  const handlePaymentHandleChange = (method: PaymentMethodType, handle: string) => {
+      setPaymentMethods(prev => prev.map(pm => pm.method === method ? { ...pm, handle } : pm));
   };
 
   const handleCarSubmit = async (carData: Omit<Car, 'id' | 'owner_id' | 'is_default'>) => {
@@ -105,7 +174,6 @@ const ProfileSettings: React.FC<{ backToApp: () => void }> = ({ backToApp }) => 
       setCarToEdit(null);
     } catch (err: any) {
       const action = carToEdit ? 'updating' : 'adding';
-      // The service layer now throws a standard Error object, so we can safely access err.message
       alert(`Error ${action} car: ${err.message || 'An unknown error occurred.'}`);
     }
   };
@@ -135,6 +203,78 @@ const ProfileSettings: React.FC<{ backToApp: () => void }> = ({ backToApp }) => 
   }
   
   const inputBaseClasses = "mt-1 block w-full px-3 py-2 text-base bg-slate-50 border-slate-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-lg";
+  
+  const renderPaymentSelection = () => {
+    const selectedMethodsMap = new Map(paymentMethods.map(pm => [pm.method, pm.handle]));
+    const canAddMore = paymentMethods.length < 3;
+
+    return (
+        <div className="p-4 bg-slate-50 rounded-lg space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {paymentOptions.map(opt => {
+                    const isSelected = selectedMethodsMap.has(opt.id);
+                    return (
+                        <button
+                            key={opt.id}
+                            type="button"
+                            onClick={() => {
+                                if (!isSelected) handleAddPaymentMethod(opt.id);
+                            }}
+                            className={`flex items-center justify-start p-3 rounded-lg border-2 text-left font-semibold transition-all ${
+                                isSelected 
+                                ? 'bg-blue-50 border-blue-500 cursor-default' 
+                                : canAddMore 
+                                    ? 'bg-white border-slate-300 hover:border-blue-400' 
+                                    : 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed'
+                            }`}
+                            disabled={isSelected || !canAddMore}
+                            title={!canAddMore && !isSelected ? "You can add up to 3 payment methods" : ""}
+                        >
+                             {opt.icon}
+                             <span className="text-slate-800">{opt.name}</span>
+                             {isSelected && <svg className="w-5 h-5 ml-auto text-blue-500" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"></path></svg>}
+                             {!isSelected && canAddMore && <span className="ml-auto text-xs font-bold text-blue-500">+ ADD</span>}
+                        </button>
+                    );
+                })}
+            </div>
+            
+            {paymentMethods.length > 0 && (
+                <div className="space-y-4 pt-4 border-t border-slate-200">
+                    {paymentMethods.map(pm => {
+                        const option = paymentOptions.find(p => p.id === pm.method);
+                        if (!option) return null;
+                        return (
+                            <div key={pm.method}>
+                                <label className="flex items-center text-sm font-medium text-slate-600 capitalize">
+                                    {option.icon}
+                                    <span>{option.name}</span>
+                                </label>
+                                <div className="mt-1 flex">
+                                    <input
+                                        type="text"
+                                        value={pm.handle}
+                                        onChange={(e) => handlePaymentHandleChange(pm.method, e.target.value)}
+                                        placeholder={option.placeholder}
+                                        className="block w-full text-base bg-white border-slate-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-l-lg"
+                                        required
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => handleRemovePaymentMethod(pm.method)}
+                                        className="inline-flex items-center px-3 rounded-r-lg border border-l-0 border-slate-300 bg-slate-100 text-slate-500 hover:bg-slate-200 text-sm font-semibold"
+                                    >
+                                        Remove
+                                    </button>
+                                </div>
+                            </div>
+                        )
+                    })}
+                </div>
+            )}
+        </div>
+    );
+};
 
   return (
     <>
@@ -195,29 +335,28 @@ const ProfileSettings: React.FC<{ backToApp: () => void }> = ({ backToApp }) => 
         
         <div>
           <label htmlFor="phone-number" className="block text-sm font-medium text-slate-600">Phone Number</label>
-          <input
-            type="tel"
-            id="phone-number"
-            value={phoneNumber}
-            onChange={(e) => setPhoneNumber(e.target.value)}
-            className={inputBaseClasses}
-            placeholder="e.g., (123) 456-7890"
-            required
-          />
+          <div className="relative mt-1">
+              <input
+                type="tel"
+                id="phone-number"
+                value={phoneNumber}
+                onChange={handlePhoneNumberChange}
+                maxLength={14}
+                className={inputBaseClasses}
+                placeholder="e.g., (123) 456-7890"
+                required
+              />
+          </div>
         </div>
 
         <div>
-          <label htmlFor="payment-info" className="block text-sm font-medium text-slate-600">Payment Info (Venmo, Zelle, etc.)</label>
-          <textarea
-            id="payment-info"
-            value={paymentInfo}
-            onChange={(e) => setPaymentInfo(e.target.value)}
-            className={inputBaseClasses}
-            placeholder="e.g., Venmo: @John-Doe-123"
-            rows={2}
-          />
-          <p className="mt-1 text-xs text-slate-500">This will be shared with passengers to facilitate payment. Only share information you are comfortable with.</p>
+            <label className="block text-sm font-medium text-slate-600">My Payment Methods</label>
+            <div className="mt-2">
+                {renderPaymentSelection()}
+            </div>
+            <p className="mt-2 text-xs text-slate-500 px-1">This will be shared with passengers to facilitate payment. Only share information you are comfortable with.</p>
         </div>
+
 
         {error && <p className="text-red-500 text-sm">{error}</p>}
         {success && <p className="text-green-500 text-sm">{success}</p>}

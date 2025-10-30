@@ -5,13 +5,18 @@ export enum UserRole {
   Driver = 'Driver',
 }
 
+export interface PaymentMethodInfo {
+  method: 'venmo' | 'zelle' | 'cashapp';
+  handle: string;
+}
+
 export interface Profile {
   id: string;
   updated_at: string;
   full_name: string;
   avatar_url: string | null;
   phone_number: string | null;
-  payment_info: string | null;
+  payment_methods: PaymentMethodInfo[] | null;
   average_rating: number;
   rating_count: number;
   is_verified_student: boolean;
@@ -24,7 +29,7 @@ export interface Driver {
   average_rating: number;
   rating_count: number;
   phone_number?: string | null;
-  payment_info?: string | null;
+  payment_methods?: PaymentMethodInfo[] | null;
   is_verified_student: boolean;
 }
 

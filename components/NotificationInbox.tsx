@@ -37,7 +37,7 @@ const NotificationInbox: React.FC<NotificationInboxProps> = ({ isOpen, notificat
     const hasUnread = notifications.some(n => !n.is_read);
 
     return (
-        <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-white rounded-lg shadow-xl z-20 border border-slate-200 overflow-hidden flex flex-col max-h-[80vh]">
+        <div className="absolute mt-2 w-72 sm:w-96 right-1/2 translate-x-1/2 sm:right-0 sm:translate-x-0 bg-white rounded-lg shadow-xl z-20 border border-slate-200 overflow-hidden flex flex-col max-h-[80vh]">
             <div className="p-3 flex justify-between items-center border-b border-slate-200 flex-shrink-0">
                 <h3 className="font-semibold text-slate-800">Notifications</h3>
                 {hasUnread && (

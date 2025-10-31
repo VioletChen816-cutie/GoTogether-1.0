@@ -1,4 +1,3 @@
-// This file acts as a re-exporter to resolve a module ambiguity.
-// It explicitly exports the DriverView component from the correct location.
-import DriverView from './components/DriverView';
-export default DriverView;
+// This file has been intentionally left blank.
+// It previously contained a re-export that could cause ambiguity in production builds.
+// The DriverView component should be imported directly from './components/DriverView'.

@@ -40,6 +40,7 @@ const rideSelectQuery = `
 
 // FIX: Added 'car_is_insured' to the select query to fetch the car's insurance status.
 // FIX: Made driver join explicit (profiles!driver_id) to prevent relationship detection errors.
+// FIX: Added 'requests' join to correctly fetch passengers for the ride.
 const rideSelectQueryForRequest = `
   id,
   from,
@@ -63,6 +64,10 @@ const rideSelectQueryForRequest = `
     phone_number,
     payment_methods,
     is_verified_student
+  ),
+  requests (
+    status,
+    passenger:profiles!passenger_id(id, full_name, avatar_url, average_rating, rating_count, phone_number, is_verified_student)
   ),
   ratings (
     rater_id,

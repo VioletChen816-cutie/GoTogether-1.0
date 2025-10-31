@@ -66,9 +66,11 @@ export const createProfile = async (profileData: { id: string; full_name: string
 export const uploadAvatar = async (userId: string, file: File): Promise<string> => {
     if (!supabase) throw new Error('Supabase client not initialized');
 
-    // Use a consistent file path, e.g., the user's ID. 
+    // Get the file extension to ensure the correct MIME type is set.
+    const fileExt = file.name.split('.').pop();
+    // Use a consistent file path, e.g., user's ID with the original file extension.
     // This makes it easy to update the avatar without creating orphaned files.
-    const filePath = `${userId}`;
+    const filePath = `${userId}.${fileExt}`;
 
     const { error: uploadError } = await supabase.storage
         .from('avatars')

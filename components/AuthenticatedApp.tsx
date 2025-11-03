@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { UserRole, Ride, Request, AppNotification, UserToRate } from '../types';
 import RoleSwitcher from './RoleSwitcher';
 import PassengerView from './PassengerView';
-import { default as DriverModeView } from '../DriverView';
+import DriverView from './DriverView';
 import ProfileSettings from './ProfileSettings';
 import { useAuth } from '../providers/AuthProvider';
 import { useNotification } from '../providers/NotificationProvider';
@@ -30,7 +30,7 @@ const AuthenticatedApp: React.FC<AuthenticatedAppProps & { view: 'app' | 'profil
     const { showNotification } = useNotification();
     const [confirmedRequest, setConfirmedRequest] = useState<Request | null>(null);
     const [rideToShowCompletion, setRideToShowCompletion] = useState<Request | null>(null);
-    const rideCheckedRef = useRef(false);
+    const initialModalsShownRef = useRef(false);
 
     // Centralized state for the rating modal
     const [ratingModalState, setRatingModalState] = useState<{ isOpen: boolean; rideId: string; userToRate: UserToRate; } | null>(null);
@@ -111,23 +111,46 @@ const AuthenticatedApp: React.FC<AuthenticatedAppProps & { view: 'app' | 'profil
         };
     }, [user, showNotification, refreshData, passengerRequests, driverRequests]);
 
-    // Check for completed rides to show the post-ride summary modal
+    // Check for completed rides to show the post-ride summary modal, or for newly accepted rides.
     useEffect(() => {
-        if (passengerRequests.length > 0 && user && !rideCheckedRef.current && role === UserRole.Passenger) {
+        if (initialModalsShownRef.current || role !== UserRole.Passenger || !user) {
+            return;
+        }
+    
+        // Prioritize showing confirmation for newly accepted rides based on unread notifications
+        if (notifications.length > 0 && passengerRequests.length > 0) {
+            const unreadAcceptedNotification = notifications.find(
+                n => n.type === 'REQUEST_ACCEPTED' && !n.is_read && n.request_id
+            );
+    
+            if (unreadAcceptedNotification) {
+                const request = passengerRequests.find(r => r.id === unreadAcceptedNotification.request_id);
+                if (request) {
+                    setTimeout(() => {
+                        setConfirmedRequest(request);
+                    }, 500);
+                    initialModalsShownRef.current = true;
+                    return; // Show one modal at a time on login
+                }
+            }
+        }
+    
+        // If no new confirmations, check for completed rides to show the post-ride summary modal
+        if (passengerRequests.length > 0) {
             const unratedCompletedRequest = passengerRequests.find(req =>
                 req.ride.status === 'completed' &&
                 !req.ride.ratings.some(r => r.rater_id === user.id && r.ratee_id === req.ride.driver.id)
             );
-
+    
             if (unratedCompletedRequest) {
                 // Use a short timeout to prevent the modal from flashing aggressively on load
                 setTimeout(() => {
                     setRideToShowCompletion(unratedCompletedRequest);
                 }, 500);
+                initialModalsShownRef.current = true; // Mark as checked so it only runs once per session
             }
-            rideCheckedRef.current = true; // Mark as checked so it only runs once per session
         }
-    }, [passengerRequests, user, role]);
+    }, [passengerRequests, notifications, user, role]);
 
     if (view === 'profile') {
         return <ProfileSettings backToApp={() => setView('app')} />;
@@ -151,7 +174,7 @@ const AuthenticatedApp: React.FC<AuthenticatedAppProps & { view: 'app' | 'profil
                         onOpenRatingModal={handleOpenRatingModal}
                     />
                 ) : (
-                    <DriverModeView 
+                    <DriverView 
                         onPostRide={onPostRide}
                         postedRides={augmentedDriverRides}
                         driverRequests={driverRequests}

@@ -19,7 +19,7 @@ const InfoRow: React.FC<{ icon: React.ReactElement, label: string, value: string
     </div>
 );
 
-const UserCard: React.FC<{ user: { name: string, avatar_url: string | null, id: string, username?: string }, role: string }> = ({ user, role }) => {
+const UserCard: React.FC<{ user: { name: string; avatar_url: string | null; id: string; username?: string, email?: string; }; role: string; }> = ({ user, role }) => {
     return (
         <div className="flex items-center space-x-3">
             <img
@@ -32,6 +32,7 @@ const UserCard: React.FC<{ user: { name: string, avatar_url: string | null, id: 
                 <p className="font-semibold text-lg text-slate-800">
                   {user.name} {user.username && `(${user.username})`}
                 </p>
+                {user.email && <p className="text-sm text-slate-500">{user.email}</p>}
             </div>
         </div>
     );

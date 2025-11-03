@@ -57,7 +57,8 @@ create table profiles (
   average_rating numeric(2,1) not null default 0.0,
   rating_count integer not null default 0,
   is_verified_student boolean not null default false,
-  username text
+  username text,
+  email text
 );
 
 -- 2. Set up Row Level Security (RLS) for profiles
@@ -96,14 +97,15 @@ create policy "Users can delete their own avatars." on storage.objects
 create or replace function public.handle_new_user()
 returns trigger as $$
 begin
-  insert into public.profiles (id, full_name, avatar_url, phone_number, is_verified_student, username)
+  insert into public.profiles (id, full_name, avatar_url, phone_number, is_verified_student, username, email)
   values (
     new.id,
     new.raw_user_meta_data->>'full_name',
     new.raw_user_meta_data->>'avatar_url',
     new.raw_user_meta_data->>'phone_number',
     (new.email like '%.edu'), -- Sets to true if email ends with .edu
-    split_part(new.email, '@', 1)
+    split_part(new.email, '@', 1),
+    new.email
   );
   return new;
 end;
@@ -475,4 +477,15 @@ begin
   update public.rides set status = 'completed' where id = ride_id_arg and status = 'active';
 end;
 $$ language plpgsql security definer;
+
+-- ========= DATA MIGRATION (RUN ONCE) =========
+-- This script backfills the `email` column for existing users in the `profiles` table.
+-- When the `email` column was added, it was NULL for all existing users.
+-- This script copies the email from the `auth.users` table to the `public.profiles` table.
+-- It's safe to run this multiple times; it will only update profiles where the email is currently missing.
+
+UPDATE public.profiles p
+SET email = u.email
+FROM auth.users u
+WHERE p.id = u.id AND p.email IS NULL;
 ```

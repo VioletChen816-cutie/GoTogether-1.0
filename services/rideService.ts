@@ -17,7 +17,7 @@ const rideSelectQuery = `
   car_color,
   car_license_plate,
   car_is_insured,
-  driver:profiles!driver_id (
+  driver:profiles (
     id,
     full_name,
     avatar_url,
@@ -26,11 +26,12 @@ const rideSelectQuery = `
     phone_number,
     payment_methods,
     is_verified_student,
-    username
+    username,
+    email
   ),
   requests (
     status,
-    passenger:profiles!passenger_id(id, full_name, avatar_url, average_rating, rating_count, phone_number, is_verified_student)
+    passenger:profiles(id, full_name, avatar_url, average_rating, rating_count, phone_number, is_verified_student, username, email)
   ),
   ratings (
     rater_id,
@@ -56,7 +57,7 @@ const rideSelectQueryForRequest = `
   car_color,
   car_license_plate,
   car_is_insured,
-  driver:profiles!driver_id (
+  driver:profiles (
     id,
     full_name,
     avatar_url,
@@ -65,11 +66,12 @@ const rideSelectQueryForRequest = `
     phone_number,
     payment_methods,
     is_verified_student,
-    username
+    username,
+    email
   ),
   requests (
     status,
-    passenger:profiles!passenger_id(id, full_name, avatar_url, average_rating, rating_count, phone_number, is_verified_student)
+    passenger:profiles(id, full_name, avatar_url, average_rating, rating_count, phone_number, is_verified_student, username, email)
   ),
   ratings (
     rater_id,
@@ -92,6 +94,7 @@ const mapDriverData = (profile: any): Driver => {
         payment_methods: profile.payment_methods,
         is_verified_student: profile.is_verified_student || false,
         username: profile.username,
+        email: profile.email,
     };
 };
 
@@ -239,7 +242,7 @@ export const getPassengerRequests = async (): Promise<Request[]> => {
         .select(`
             id, created_at, status,
             rides ( ${rideSelectQueryForRequest} ),
-            profiles!passenger_id (id, full_name, avatar_url, average_rating, rating_count, phone_number, is_verified_student, username)
+            profiles (id, full_name, avatar_url, average_rating, rating_count, phone_number, is_verified_student, username, email)
         `)
         .eq('passenger_id', user.id)
         .order('created_at', { ascending: false });
@@ -270,7 +273,7 @@ export const getDriverRequests = async (): Promise<Request[]> => {
         .select(`
             id, created_at, status,
             rides ( ${rideSelectQueryForRequest} ),
-            profiles!passenger_id (id, full_name, avatar_url, average_rating, rating_count, phone_number, is_verified_student, username)
+            profiles (id, full_name, avatar_url, average_rating, rating_count, phone_number, is_verified_student, username, email)
         `)
         .in('ride_id', rideIds.map(r => r.id))
         .order('created_at', { ascending: false });

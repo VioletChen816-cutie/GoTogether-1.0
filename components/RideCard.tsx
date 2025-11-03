@@ -99,8 +99,13 @@ const PassengerList: React.FC<{
                         className="flex items-center space-x-2 text-left"
                       >
                           <img className="h-8 w-8 rounded-full object-cover" src={p.avatar_url || DEFAULT_AVATAR_URL} alt={p.name} />
-                           <span className="text-sm font-medium text-slate-800">{p.name} {p.username && `(${p.username})`}</span>
-                           {p.is_verified_student && <VerifiedBadge className="ml-1" />}
+                           <div>
+                                <div className="flex items-center">
+                                    <span className="text-sm font-medium text-slate-800">{p.name} {p.username && `(${p.username})`}</span>
+                                    {p.is_verified_student && <VerifiedBadge className="ml-1" />}
+                                </div>
+                                {p.email && <p className="text-xs text-slate-500">{p.email}</p>}
+                            </div>
                       </button>
                       <div className="flex items-center">
                           <ContactActions phoneNumber={p.phone_number} userType="driver" />

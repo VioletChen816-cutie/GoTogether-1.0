@@ -21,6 +21,7 @@ export interface Profile {
   rating_count: number;
   is_verified_student: boolean;
   username?: string;
+  email?: string;
 }
 
 export interface Driver {
@@ -33,6 +34,7 @@ export interface Driver {
   payment_methods?: PaymentMethodInfo[] | null;
   is_verified_student: boolean;
   username?: string;
+  email?: string;
 }
 
 export enum RideStatus {

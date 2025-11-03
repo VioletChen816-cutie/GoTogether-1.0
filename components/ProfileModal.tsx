@@ -40,7 +40,10 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ profile, onClose }) => {
             <h3 className="text-xl font-bold text-slate-800">{profile.name} {profile.username && `(${profile.username})`}</h3>
             {profile.is_verified_student && <VerifiedBadge />}
         </div>
-
+        
+        {profile.email && (
+          <p className="text-sm text-slate-500 mt-1">{profile.email}</p>
+        )}
 
         <div className="mt-2 flex items-center justify-center">
           {profile.rating_count > 0 ? (

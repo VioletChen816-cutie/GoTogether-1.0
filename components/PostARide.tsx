@@ -4,11 +4,6 @@ import { LOCATIONS } from '../constants';
 import { getCarsForUser, updateProfile, addCar } from '../services/profileService';
 import { useAuth } from '../providers/AuthProvider';
 
-interface PostARideProps {
-  onPostRide: (newRide: Omit<Ride, 'id' | 'driver' | 'passengers' | 'status' | 'ratings'>) => Promise<boolean>;
-  onPostRideSuccess: (success: boolean) => void;
-}
-
 const VenmoIcon = () => (
     <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-6 h-6 mr-2 flex-shrink-0">
         <circle cx="12" cy="12" r="12" fill="#3D95CE"/>
@@ -31,7 +26,13 @@ const CashAppIcon = () => (
     </svg>
 );
 
+const TrashIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>;
 
+
+interface PostARideProps {
+  onPostRide: (newRide: Omit<Ride, 'id' | 'driver' | 'passengers' | 'status' | 'ratings'>) => Promise<boolean>;
+  onPostRideSuccess: (success: boolean) => void;
+}
 type PaymentMethodType = 'venmo' | 'zelle' | 'cashapp';
 
 const paymentOptions: { id: PaymentMethodType, name: string, placeholder: string, icon: React.ReactElement }[] = [
@@ -386,21 +387,22 @@ const PostARide: React.FC<PostARideProps> = ({ onPostRide, onPostRideSuccess }) 
                                     {option.icon}
                                     <span>{option.name}</span>
                                 </label>
-                                <div className="mt-1 flex">
+                                <div className="mt-1 flex items-center rounded-lg border border-slate-300 focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-500 overflow-hidden bg-white">
                                     <input
                                         type="text"
                                         value={pm.handle}
                                         onChange={(e) => handlePaymentHandleChange(pm.method, e.target.value)}
                                         placeholder={option.placeholder}
-                                        className="block w-full text-base bg-white border-slate-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-l-lg"
+                                        className="flex-auto w-full text-base bg-transparent sm:text-sm px-3 py-2 focus:outline-none"
                                         required
                                     />
                                     <button
                                         type="button"
                                         onClick={() => handleRemovePaymentMethod(pm.method)}
-                                        className="inline-flex items-center px-3 rounded-r-lg border border-l-0 border-slate-300 bg-slate-100 text-slate-500 hover:bg-slate-200 text-sm font-semibold"
+                                        className="flex-shrink-0 inline-flex items-center justify-center p-3 text-slate-500 hover:text-red-600 bg-slate-50 hover:bg-slate-100 border-l border-slate-300 transition-colors"
+                                        title={`Remove ${option.name}`}
                                     >
-                                        Remove
+                                        <TrashIcon />
                                     </button>
                                 </div>
                             </div>

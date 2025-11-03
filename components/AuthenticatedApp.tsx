@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { UserRole, Ride, Request, AppNotification, UserToRate } from '../types';
 import RoleSwitcher from './RoleSwitcher';
 import PassengerView from './PassengerView';
-import { default as DriverModeView } from './DriverView';
+import { default as DriverModeView } from '../DriverView';
 import ProfileSettings from './ProfileSettings';
 import { useAuth } from '../providers/AuthProvider';
 import { useNotification } from '../providers/NotificationProvider';

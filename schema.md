@@ -86,7 +86,7 @@ create policy "Authenticated users can upload an avatar." on storage.objects
   for insert to authenticated with check (bucket_id = 'avatars');
 
 create policy "Users can update their own avatars." on storage.objects
-    for update with check (auth.uid() = owner);
+    for update using (auth.uid() = owner) with check (auth.uid() = owner);
 
 create policy "Users can delete their own avatars." on storage.objects
     for delete using (auth.uid() = owner);

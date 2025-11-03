@@ -1,5 +1,5 @@
 {
   "name": "GoTogether",
-  "description": "A friendly ridesharing community application where passengers can find rides and drivers can post available trips. This app facilitates carpooling by connecting drivers with empty seats to people traveling the same way.",
+  "description": "A ridesharing application for Cornellians, by Cornellians. This app facilitates carpooling by connecting drivers with empty seats to people traveling the same way.",
   "requestFramePermissions": []
 }

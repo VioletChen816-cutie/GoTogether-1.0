@@ -63,7 +63,7 @@ const Header: React.FC<HeaderProps> = ({ setView, notifications, setNotification
         <h1 className="text-4xl md:text-5xl font-bold text-slate-800 cursor-pointer" onClick={() => setView('app')}>
           Go<span className="text-blue-500">Together</span>
         </h1>
-        <p className="mt-1 text-lg text-slate-500">Your friendly ridesharing community.</p>
+        <p className="mt-1 text-lg text-slate-500">Rides for Cornellians, by Cornellians</p>
       </div>
       <div className="mt-4 sm:mt-0">
         {user ? (

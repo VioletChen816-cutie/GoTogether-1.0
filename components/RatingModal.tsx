@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { UserToRate } from '../types';
+import { DEFAULT_AVATAR_URL } from '../constants';
 
 interface RatingModalProps {
   isOpen: boolean;
@@ -52,7 +53,7 @@ const RatingModal: React.FC<RatingModalProps> = ({ isOpen, onClose, onSubmit, us
         onClick={(e) => e.stopPropagation()}
       >
         <img
-          src={userToRate.avatar_url || `https://picsum.photos/seed/${userToRate.id}/100/100`}
+          src={userToRate.avatar_url || DEFAULT_AVATAR_URL}
           alt={userToRate.name}
           className="h-20 w-20 rounded-full object-cover mx-auto mb-4 border-4 border-slate-100"
         />

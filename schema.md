@@ -56,7 +56,8 @@ create table profiles (
   payment_methods jsonb,
   average_rating numeric(2,1) not null default 0.0,
   rating_count integer not null default 0,
-  is_verified_student boolean not null default false
+  is_verified_student boolean not null default false,
+  username text
 );
 
 -- 2. Set up Row Level Security (RLS) for profiles
@@ -95,13 +96,14 @@ create policy "Users can delete their own avatars." on storage.objects
 create or replace function public.handle_new_user()
 returns trigger as $$
 begin
-  insert into public.profiles (id, full_name, avatar_url, phone_number, is_verified_student)
+  insert into public.profiles (id, full_name, avatar_url, phone_number, is_verified_student, username)
   values (
     new.id,
     new.raw_user_meta_data->>'full_name',
     new.raw_user_meta_data->>'avatar_url',
     new.raw_user_meta_data->>'phone_number',
-    (new.email like '%.edu') -- Sets to true if email ends with .edu
+    (new.email like '%.edu'), -- Sets to true if email ends with .edu
+    split_part(new.email, '@', 1)
   );
   return new;
 end;

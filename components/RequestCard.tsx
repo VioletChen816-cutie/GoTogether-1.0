@@ -5,6 +5,7 @@ import { useAuth } from '../providers/AuthProvider';
 import ProfileModal from './ProfileModal';
 import { useNotification } from '../providers/NotificationProvider';
 import ContactActions from './ContactActions';
+import { DEFAULT_AVATAR_URL } from '../constants';
 
 interface RequestCardProps {
   request: Request;
@@ -47,10 +48,10 @@ const TripCompanions: React.FC<{ ride: Request['ride'], currentUser: Driver, onP
               className="flex items-center space-x-3 cursor-pointer"
               onClick={() => onProfileClick(ride.driver)}
           >
-            <img className="h-10 w-10 rounded-full object-cover" src={ride.driver.avatar_url || `https://picsum.photos/seed/${ride.driver.id}/100/100`} alt={ride.driver.name} />
+            <img className="h-10 w-10 rounded-full object-cover" src={ride.driver.avatar_url || DEFAULT_AVATAR_URL} alt={ride.driver.name} />
             <div>
               <div className="flex items-center">
-                  <p className="font-semibold text-sm text-slate-800">{ride.driver.name}</p>
+                  <p className="font-semibold text-sm text-slate-800">{ride.driver.name} {ride.driver.username && `(${ride.driver.username})`}</p>
                   {ride.driver.is_verified_student && <VerifiedBadge />}
               </div>
               <p className="text-xs text-slate-500">Driver</p>
@@ -68,7 +69,7 @@ const TripCompanions: React.FC<{ ride: Request['ride'], currentUser: Driver, onP
               className="flex items-center space-x-3 cursor-pointer hover:bg-slate-50 p-3 rounded-lg transition-colors"
               onClick={() => onProfileClick(p)}
            >
-            <img className="h-10 w-10 rounded-full object-cover" src={p.avatar_url || `https://picsum.photos/seed/${p.id}/100/100`} alt={p.name} />
+            <img className="h-10 w-10 rounded-full object-cover" src={p.avatar_url || DEFAULT_AVATAR_URL} alt={p.name} />
             <div>
               <div className="flex items-center">
                 <p className="text-sm font-medium text-slate-900">{p.name}</p>
@@ -95,6 +96,7 @@ const RequestCard: React.FC<RequestCardProps> = ({ request, viewAs, refreshData,
   const { ride, passenger, status } = request;
   const [loadingAction, setLoadingAction] = useState<'accept' | 'reject' | 'cancel' | null>(null);
   const [viewingProfile, setViewingProfile] = useState<Driver | null>(null);
+  const showUsername = status === RequestStatus.Accepted;
 
   const handleUpdateStatus = async (newStatus: RequestStatus, action: 'reject' | 'cancel') => {
     setLoadingAction(action);
@@ -124,7 +126,7 @@ const RequestCard: React.FC<RequestCardProps> = ({ request, viewAs, refreshData,
     hour: '2-digit', minute: '2-digit', hour12: true,
   });
 
-  const passengerAvatar = passenger.avatar_url || `https://picsum.photos/seed/${passenger.id}/100/100`;
+  const passengerAvatar = passenger.avatar_url || DEFAULT_AVATAR_URL;
   const isLoading = !!loadingAction;
 
   return (
@@ -147,7 +149,7 @@ const RequestCard: React.FC<RequestCardProps> = ({ request, viewAs, refreshData,
                      </p>
                   )}
                   <p className="text-sm text-slate-500">
-                    {viewAs === 'passenger' ? `Driver: ${ride.driver.name}` : `Passenger: ${passenger.name}`}
+                    {viewAs === 'passenger' ? `Driver: ${ride.driver.name} ${showUsername && ride.driver.username ? `(${ride.driver.username})` : ''}` : `Passenger: ${passenger.name} ${showUsername && passenger.username ? `(${passenger.username})` : ''}`}
                   </p>
                 </div>
               </div>
@@ -162,10 +164,10 @@ const RequestCard: React.FC<RequestCardProps> = ({ request, viewAs, refreshData,
                     className="flex items-center space-x-3 cursor-pointer hover:bg-slate-50 p-1 -m-1 rounded-lg transition-colors"
                     onClick={() => setViewingProfile(ride.driver)}
                     >
-                    <img className="h-10 w-10 rounded-full object-cover" src={ride.driver.avatar_url || `https://picsum.photos/seed/${ride.driver.id}/100/100`} alt={ride.driver.name} />
+                    <img className="h-10 w-10 rounded-full object-cover" src={ride.driver.avatar_url || DEFAULT_AVATAR_URL} alt={ride.driver.name} />
                     <div>
                         <div className="flex items-center">
-                            <p className="text-sm font-medium text-slate-900">{ride.driver.name}</p>
+                            <p className="text-sm font-medium text-slate-900">{ride.driver.name} {showUsername && ride.driver.username && `(${ride.driver.username})`}</p>
                             {ride.driver.is_verified_student && <VerifiedBadge />}
                         </div>
                         <p className="text-xs text-slate-500">Driver</p>
@@ -199,7 +201,7 @@ const RequestCard: React.FC<RequestCardProps> = ({ request, viewAs, refreshData,
                   <img className="h-10 w-10 rounded-full object-cover" src={passengerAvatar} alt={passenger.name} />
                   <div>
                     <div className="flex items-center">
-                        <p className="text-sm font-medium text-slate-900">{passenger.name}</p>
+                        <p className="text-sm font-medium text-slate-900">{passenger.name} {showUsername && passenger.username && `(${passenger.username})`}</p>
                         {passenger.is_verified_student && <VerifiedBadge />}
                     </div>
                     <p className="text-sm text-slate-500">Wants to join your ride</p>
@@ -235,7 +237,7 @@ const RequestCard: React.FC<RequestCardProps> = ({ request, viewAs, refreshData,
                   <img className="h-10 w-10 rounded-full object-cover" src={passengerAvatar} alt={passenger.name} />
                   <div>
                     <div className="flex items-center">
-                        <p className="text-sm font-medium text-slate-900">{passenger.name}</p>
+                        <p className="text-sm font-medium text-slate-900">{passenger.name} {showUsername && passenger.username && `(${passenger.username})`}</p>
                         {passenger.is_verified_student && <VerifiedBadge />}
                     </div>
                     <p className="text-sm text-green-600 font-medium">Is joining your ride</p>

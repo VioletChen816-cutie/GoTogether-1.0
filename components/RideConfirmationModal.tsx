@@ -1,6 +1,7 @@
 import React from 'react';
 import { Request } from '../types';
 import ContactInfo from './ContactInfo';
+import { DEFAULT_AVATAR_URL } from '../constants';
 
 interface RideConfirmationModalProps {
   request: Request | null;
@@ -18,19 +19,23 @@ const InfoRow: React.FC<{ icon: React.ReactElement, label: string, value: string
     </div>
 );
 
-const UserCard: React.FC<{ user: { name: string, avatar_url: string | null, id: string }, role: string }> = ({ user, role }) => (
-     <div className="flex items-center space-x-3">
-        <img
-            src={user.avatar_url || `https://picsum.photos/seed/${user.id}/100/100`}
-            alt={user.name}
-            className="h-12 w-12 rounded-full object-cover"
-        />
-        <div>
-            <p className="text-sm text-slate-500">{role}</p>
-            <p className="font-semibold text-lg text-slate-800">{user.name}</p>
+const UserCard: React.FC<{ user: { name: string, avatar_url: string | null, id: string, username?: string }, role: string }> = ({ user, role }) => {
+    return (
+        <div className="flex items-center space-x-3">
+            <img
+                src={user.avatar_url || DEFAULT_AVATAR_URL}
+                alt={user.name}
+                className="h-12 w-12 rounded-full object-cover"
+            />
+            <div>
+                <p className="text-sm text-slate-500">{role}</p>
+                <p className="font-semibold text-lg text-slate-800">
+                  {user.name} {user.username && `(${user.username})`}
+                </p>
+            </div>
         </div>
-    </div>
-);
+    );
+};
 
 
 const RideConfirmationModal: React.FC<RideConfirmationModalProps> = ({ request, userRole, onClose }) => {

@@ -20,6 +20,7 @@ export interface Profile {
   average_rating: number;
   rating_count: number;
   is_verified_student: boolean;
+  username?: string;
 }
 
 export interface Driver {
@@ -31,6 +32,7 @@ export interface Driver {
   phone_number?: string | null;
   payment_methods?: PaymentMethodInfo[] | null;
   is_verified_student: boolean;
+  username?: string;
 }
 
 export enum RideStatus {

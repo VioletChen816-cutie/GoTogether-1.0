@@ -25,7 +25,8 @@ const rideSelectQuery = `
     rating_count,
     phone_number,
     payment_methods,
-    is_verified_student
+    is_verified_student,
+    username
   ),
   requests (
     status,
@@ -63,7 +64,8 @@ const rideSelectQueryForRequest = `
     rating_count,
     phone_number,
     payment_methods,
-    is_verified_student
+    is_verified_student,
+    username
   ),
   requests (
     status,
@@ -89,6 +91,7 @@ const mapDriverData = (profile: any): Driver => {
         phone_number: profile.phone_number,
         payment_methods: profile.payment_methods,
         is_verified_student: profile.is_verified_student || false,
+        username: profile.username,
     };
 };
 
@@ -236,7 +239,7 @@ export const getPassengerRequests = async (): Promise<Request[]> => {
         .select(`
             id, created_at, status,
             rides ( ${rideSelectQueryForRequest} ),
-            profiles!passenger_id (id, full_name, avatar_url, average_rating, rating_count, phone_number, is_verified_student)
+            profiles!passenger_id (id, full_name, avatar_url, average_rating, rating_count, phone_number, is_verified_student, username)
         `)
         .eq('passenger_id', user.id)
         .order('created_at', { ascending: false });
@@ -267,7 +270,7 @@ export const getDriverRequests = async (): Promise<Request[]> => {
         .select(`
             id, created_at, status,
             rides ( ${rideSelectQueryForRequest} ),
-            profiles!passenger_id (id, full_name, avatar_url, average_rating, rating_count, phone_number, is_verified_student)
+            profiles!passenger_id (id, full_name, avatar_url, average_rating, rating_count, phone_number, is_verified_student, username)
         `)
         .in('ride_id', rideIds.map(r => r.id))
         .order('created_at', { ascending: false });

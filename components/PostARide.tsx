@@ -54,6 +54,8 @@ const PostARide: React.FC<PostARideProps> = ({ onPostRide, onPostRideSuccess }) 
 
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
+  const [customFrom, setCustomFrom] = useState('');
+  const [customTo, setCustomTo] = useState('');
   const [departureDate, setDepartureDate] = useState(getTodayLocal);
   const [departureTimeValue, setDepartureTimeValue] = useState('');
   const [seatsAvailable, setSeatsAvailable] = useState(1);
@@ -161,6 +163,8 @@ const PostARide: React.FC<PostARideProps> = ({ onPostRide, onPostRideSuccess }) 
   const clearForm = () => {
     setFrom('');
     setTo('');
+    setCustomFrom('');
+    setCustomTo('');
     setDepartureDate(getTodayLocal());
     setDepartureTimeValue('');
     setSeatsAvailable(1);
@@ -178,11 +182,10 @@ const PostARide: React.FC<PostARideProps> = ({ onPostRide, onPostRideSuccess }) 
     setError('');
     setSuccess('');
 
-    if (!from || !to || !departureDate || !departureTimeValue) {
-        setError('Please fill out all trip details.');
-        return;
-    }
-    if (from === to) {
+    const finalFrom = from === 'Other' ? customFrom.trim() : from;
+    const finalTo = to === 'Other' ? customTo.trim() : to;
+
+    if (finalFrom === finalTo) {
         setError('Start and end locations cannot be the same.');
         return;
     }
@@ -246,8 +249,8 @@ const PostARide: React.FC<PostARideProps> = ({ onPostRide, onPostRideSuccess }) 
         }
 
         const ridePosted = await onPostRide({
-          from,
-          to,
+          from: finalFrom,
+          to: finalTo,
           departureTime: new Date(`${departureDate}T${departureTimeValue}`),
           seatsAvailable,
           price,
@@ -429,17 +432,51 @@ const PostARide: React.FC<PostARideProps> = ({ onPostRide, onPostRideSuccess }) 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
             <label htmlFor="post-from" className="block text-sm font-medium text-slate-600">From</label>
-            <select id="post-from" value={from} onChange={(e) => setFrom(e.target.value)} className={inputBaseClasses} required>
+            <select id="post-from" value={from} onChange={(e) => {
+                const value = e.target.value;
+                setFrom(value);
+                if (value !== 'Other') {
+                    setCustomFrom('');
+                }
+            }} className={inputBaseClasses} required>
               <option value="" disabled>Select a location</option>
               {LOCATIONS.map(loc => <option key={`from-${loc}`} value={loc} disabled={loc === to}>{loc}</option>)}
+              <option value="Other">Other</option>
             </select>
+            {from === 'Other' && (
+                <input
+                    type="text"
+                    placeholder="Enter custom start location"
+                    value={customFrom}
+                    onChange={(e) => setCustomFrom(e.target.value)}
+                    className={`${inputBaseClasses} mt-2`}
+                    required
+                />
+            )}
           </div>
           <div>
             <label htmlFor="post-to" className="block text-sm font-medium text-slate-600">To</label>
-            <select id="post-to" value={to} onChange={(e) => setTo(e.target.value)} className={inputBaseClasses} required>
+            <select id="post-to" value={to} onChange={(e) => {
+                const value = e.target.value;
+                setTo(value);
+                if (value !== 'Other') {
+                    setCustomTo('');
+                }
+            }} className={inputBaseClasses} required>
               <option value="" disabled>Select a location</option>
               {LOCATIONS.map(loc => <option key={`to-${loc}`} value={loc} disabled={loc === from}>{loc}</option>)}
+              <option value="Other">Other</option>
             </select>
+            {to === 'Other' && (
+                <input
+                    type="text"
+                    placeholder="Enter custom destination"
+                    value={customTo}
+                    onChange={(e) => setCustomTo(e.target.value)}
+                    className={`${inputBaseClasses} mt-2`}
+                    required
+                />
+            )}
           </div>
         </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-6 items-end">

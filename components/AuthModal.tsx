@@ -11,6 +11,7 @@ const AuthModal: React.FC = () => {
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
+  const [rememberMe, setRememberMe] = useState(true);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
@@ -73,6 +74,8 @@ const AuthModal: React.FC = () => {
             data: {
               full_name: fullName,
               phone_number: phoneNumber,
+              // avatar_url is no longer provided at sign up.
+              // It will default to null and can be set in profile settings.
             }
           }
         });
@@ -101,6 +104,12 @@ const AuthModal: React.FC = () => {
     setAgreedToTerms(false);
     setAuthError('');
     closeAuthModal();
+  };
+
+  const handleToggleAuthMode = () => {
+    setIsSigningUp(!isSigningUp);
+    setError('');
+    setAuthError('');
   };
 
   if (!isAuthModalOpen) return null;
@@ -161,6 +170,25 @@ const AuthModal: React.FC = () => {
                 className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 required
               />
+
+              {!isSigningUp && (
+                <div className="flex items-center justify-between !mt-2">
+                  <div className="flex items-center">
+                    <input
+                      id="remember-me"
+                      name="remember-me"
+                      type="checkbox"
+                      checked={rememberMe}
+                      onChange={(e) => setRememberMe(e.target.checked)}
+                      className="h-4 w-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500"
+                    />
+                    <label htmlFor="remember-me" className="ml-2 block text-sm text-slate-700">
+                      Remember me
+                    </label>
+                  </div>
+                </div>
+              )}
+
                {isSigningUp && (
                 <div className="flex items-start pt-2">
                   <div className="flex items-center h-5">
@@ -200,7 +228,7 @@ const AuthModal: React.FC = () => {
             </form>
             <p className="text-center text-sm text-slate-600 mt-6">
               {isSigningUp ? 'Already have an account? ' : "Don't have an account? "}
-              <button onClick={() => { setIsSigningUp(!isSigningUp); setError(''); setAuthError(''); }} className="text-blue-500 hover:underline font-semibold">
+              <button onClick={handleToggleAuthMode} className="text-blue-500 hover:underline font-semibold">
                 {isSigningUp ? 'Sign In' : 'Sign Up'}
               </button>
             </p>

@@ -5,6 +5,7 @@ import { requestRide } from '../services/rideService';
 import ProfileModal from './ProfileModal';
 import PaymentInfoModal from './PaymentInfoModal';
 import ContactActions from './ContactActions';
+import { DEFAULT_AVATAR_URL } from '../constants';
 
 interface RideCardProps {
   ride: Ride;
@@ -62,8 +63,8 @@ const PassengerList: React.FC<{
                           onClick={() => onProfileClick(p)}
                           className="flex items-center space-x-2 text-left"
                         >
-                            <img className="h-8 w-8 rounded-full object-cover" src={p.avatar_url || `https://picsum.photos/seed/${p.id}/100/100`} alt={p.name} />
-                            <span className="text-sm font-medium text-slate-800">{p.name}</span>
+                            <img className="h-8 w-8 rounded-full object-cover" src={p.avatar_url || DEFAULT_AVATAR_URL} alt={p.name} />
+                            <span className="text-sm font-medium text-slate-800">{p.name} {p.username && `(${p.username})`}</span>
                             {p.is_verified_student && <VerifiedBadge className="ml-1" />}
                         </button>
                         {alreadyRatedPassengerIds.has(p.id) ? (
@@ -97,8 +98,8 @@ const PassengerList: React.FC<{
                         onClick={() => onProfileClick(p)}
                         className="flex items-center space-x-2 text-left"
                       >
-                          <img className="h-8 w-8 rounded-full object-cover" src={p.avatar_url || `https://picsum.photos/seed/${p.id}/100/100`} alt={p.name} />
-                           <span className="text-sm font-medium text-slate-800">{p.name}</span>
+                          <img className="h-8 w-8 rounded-full object-cover" src={p.avatar_url || DEFAULT_AVATAR_URL} alt={p.name} />
+                           <span className="text-sm font-medium text-slate-800">{p.name} {p.username && `(${p.username})`}</span>
                            {p.is_verified_student && <VerifiedBadge className="ml-1" />}
                       </button>
                       <div className="flex items-center">
@@ -125,7 +126,7 @@ const PassengerList: React.FC<{
            >
             <img
               className="h-9 w-9 rounded-full object-cover border-2 border-white"
-              src={p.avatar_url || `https://picsum.photos/seed/${p.id}/100/100`}
+              src={p.avatar_url || DEFAULT_AVATAR_URL}
               alt={p.name}
               title={p.name}
             />
@@ -275,7 +276,7 @@ const RideCard: React.FC<RideCardProps> = ({ ride, requestStatus, refreshData, i
     return '';
   };
 
-  const driverAvatar = driver.avatar_url || `https://picsum.photos/seed/${driver.id}/100/100`;
+  const driverAvatar = driver.avatar_url || DEFAULT_AVATAR_URL;
 
   const shouldShowRatePassengersSection = isDriverView && status === RideStatus.Completed && passengers.length > 0;
   
@@ -393,7 +394,7 @@ const RideCard: React.FC<RideCardProps> = ({ ride, requestStatus, refreshData, i
                                         <img
                                             key={p.id}
                                             className="h-7 w-7 rounded-full object-cover border-2 border-white"
-                                            src={p.avatar_url || `https://picsum.photos/seed/${p.id}/100/100`}
+                                            src={p.avatar_url || DEFAULT_AVATAR_URL}
                                             alt={p.name}
                                             title={p.name}
                                         />

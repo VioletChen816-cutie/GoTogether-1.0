@@ -3,6 +3,7 @@ import { useAuth } from '../providers/AuthProvider';
 import { updateProfile, uploadAvatar, getCarsForUser, addCar, updateCar, deleteCar, setDefaultCar } from '../services/profileService';
 import { Car, PaymentMethodInfo } from '../types';
 import CarFormModal from './CarFormModal';
+import { DEFAULT_AVATAR_URL } from '../constants';
 
 type PaymentMethodType = 'venmo' | 'zelle' | 'cashapp';
 
@@ -291,7 +292,7 @@ const ProfileSettings: React.FC<{ backToApp: () => void }> = ({ backToApp }) => 
           <label className="block text-sm font-medium text-slate-600">Profile Picture</label>
           <div className="mt-2 flex items-center space-x-4">
             <img 
-              src={avatarPreview || `https://picsum.photos/seed/${user?.id}/100/100`} 
+              src={avatarPreview || DEFAULT_AVATAR_URL} 
               alt="Profile" 
               className="h-16 w-16 rounded-full object-cover bg-slate-200"
             />

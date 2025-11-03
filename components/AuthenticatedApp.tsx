@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { UserRole, Ride, Request, AppNotification, UserToRate } from '../types';
 import RoleSwitcher from './RoleSwitcher';
 import PassengerView from './PassengerView';
-import DriverView from './DriverView';
+import { default as DriverModeView } from './DriverView';
 import ProfileSettings from './ProfileSettings';
 import { useAuth } from '../providers/AuthProvider';
 import { useNotification } from '../providers/NotificationProvider';
@@ -34,6 +34,26 @@ const AuthenticatedApp: React.FC<AuthenticatedAppProps & { view: 'app' | 'profil
 
     // Centralized state for the rating modal
     const [ratingModalState, setRatingModalState] = useState<{ isOpen: boolean; rideId: string; userToRate: UserToRate; } | null>(null);
+
+    const passengerUsernameMap = useMemo(() => {
+        const map = new Map<string, string | undefined>();
+        driverRequests.forEach(req => {
+            if (req.passenger.username) {
+                map.set(req.passenger.id, req.passenger.username);
+            }
+        });
+        return map;
+    }, [driverRequests]);
+
+    const augmentedDriverRides = useMemo(() => {
+        return driverRides.map(ride => ({
+            ...ride,
+            passengers: ride.passengers.map(p => ({
+                ...p,
+                username: p.username || passengerUsernameMap.get(p.id)
+            }))
+        }));
+    }, [driverRides, passengerUsernameMap]);
 
     const handleOpenRatingModal = (rideId: string, userToRate: UserToRate) => {
         setRatingModalState({ isOpen: true, rideId, userToRate });
@@ -131,9 +151,9 @@ const AuthenticatedApp: React.FC<AuthenticatedAppProps & { view: 'app' | 'profil
                         onOpenRatingModal={handleOpenRatingModal}
                     />
                 ) : (
-                    <DriverView 
+                    <DriverModeView 
                         onPostRide={onPostRide}
-                        postedRides={driverRides}
+                        postedRides={augmentedDriverRides}
                         driverRequests={driverRequests}
                         notifications={notifications}
                         refreshData={refreshData}

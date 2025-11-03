@@ -1,5 +1,6 @@
 import React from 'react';
 import { Driver } from '../types';
+import { DEFAULT_AVATAR_URL } from '../constants';
 
 interface ProfileModalProps {
   profile: Driver | null;
@@ -30,13 +31,13 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ profile, onClose }) => {
         </button>
         
         <img
-          src={profile.avatar_url || `https://picsum.photos/seed/${profile.id}/100/100`}
+          src={profile.avatar_url || DEFAULT_AVATAR_URL}
           alt={profile.name}
           className="h-24 w-24 rounded-full object-cover mx-auto mb-4 border-4 border-slate-100"
         />
 
         <div className="flex items-center justify-center">
-            <h3 className="text-xl font-bold text-slate-800">{profile.name}</h3>
+            <h3 className="text-xl font-bold text-slate-800">{profile.name} {profile.username && `(${profile.username})`}</h3>
             {profile.is_verified_student && <VerifiedBadge />}
         </div>
 

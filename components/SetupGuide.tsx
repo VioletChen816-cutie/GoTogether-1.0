@@ -1,18 +1,11 @@
-# GoTogether Rideshare - Full Database Schema
+import React, { useState } from 'react';
 
-This script will set up your entire Supabase database for the GoTogether application. It creates all necessary tables, data types, functions, and security policies from scratch.
+interface SetupGuideProps {
+  onRetry: () => void;
+  error: string | null;
+}
 
-**Instructions:**
-1. Navigate to the **SQL Editor** in your Supabase project dashboard.
-2. Click **"New query"**.
-3. Copy the entire contents of this file.
-4. Paste it into the SQL Editor.
-5. Click **"RUN"**.
-
-This script is idempotent, meaning you can safely run it multiple times without causing errors.
-
-```sql
--- ========= EXTENSIONS & TYPES =========
+const fullSchemaScript = `-- ========= EXTENSIONS & TYPES =========
 
 -- Create custom enum types if they don't exist
 DO $$
@@ -184,7 +177,7 @@ BEGIN
     NEW.id,
     NEW.raw_user_meta_data->>'full_name',
     NEW.email,
-    (NEW.email ~* '\.edu$'), -- Set is_verified_student if email ends with .edu
+    (NEW.email ~* '\\\\.edu$'), -- Set is_verified_student if email ends with .edu
     NEW.raw_user_meta_data->>'phone_number'
   );
   RETURN NEW;
@@ -446,4 +439,81 @@ DROP POLICY IF EXISTS "Users can update their own requests." ON public.passenger
 CREATE POLICY "Users can update their own requests." ON public.passenger_ride_requests FOR UPDATE USING (auth.uid() = passenger_id);
 DROP POLICY IF EXISTS "Drivers can fulfill passenger ride requests." ON public.passenger_ride_requests;
 CREATE POLICY "Drivers can fulfill passenger ride requests." ON public.passenger_ride_requests FOR UPDATE USING (auth.uid() <> passenger_id);
-```
+`;
+
+const DatabaseIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" /></svg>;
+const CodeIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" /></svg>;
+const ClipboardIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>;
+const CheckIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>;
+const PlayIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" /><path strokeLinecap="round" strokeLinejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>;
+
+const Step: React.FC<{ number: number; title: string; children: React.ReactNode; icon: React.ReactElement; }> = ({ number, title, children, icon }) => (
+    <div className="flex items-start space-x-4">
+        <div className="flex-shrink-0 flex flex-col items-center">
+            <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-lg ring-4 bg-blue-500 ring-blue-100">
+                {number}
+            </div>
+            <div className="mt-2 text-blue-500">{icon}</div>
+        </div>
+        <div>
+            <h3 className="font-semibold text-lg text-slate-800">{title}</h3>
+            <div className="text-slate-600 space-y-2">{children}</div>
+        </div>
+    </div>
+);
+
+
+const SetupGuide: React.FC<SetupGuideProps> = ({ onRetry, error }) => {
+  const [isCopied, setIsCopied] = useState(false);
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(fullSchemaScript).then(() => {
+      setIsCopied(true);
+      setTimeout(() => setIsCopied(false), 2500);
+    });
+  };
+
+  return (
+    <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4 antialiased">
+      <div className="w-full max-w-3xl bg-white rounded-2xl shadow-xl border border-slate-200 p-8">
+        <div className="text-center">
+            <span className="inline-block p-3 bg-red-100 rounded-full">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+            </span>
+            <h1 className="text-2xl font-bold text-slate-800 mt-4">Database Setup Required</h1>
+            {error && <p className="mt-2 text-red-600">{error}</p>}
+        </div>
+
+        <div className="mt-8 text-left text-slate-700 space-y-8">
+            <Step number={1} title="Run the Database Script" icon={<CodeIcon />}>
+                <p>Go to the <strong>SQL Editor</strong> in your Supabase project, create a <strong>"+ New query"</strong>, and run the script below to create the tables.</p>
+                 <button 
+                    onClick={handleCopy}
+                    className={`mt-2 inline-flex items-center justify-center px-4 py-2 text-sm font-semibold text-white rounded-lg transition-colors shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+                        isCopied 
+                        ? 'bg-green-500 hover:bg-green-600 focus:ring-green-500' 
+                        : 'bg-blue-500 hover:bg-blue-600 focus:ring-blue-500'
+                    }`}
+                >
+                    {isCopied ? <><CheckIcon /> Copied!</> : <><ClipboardIcon /> Copy Script</>}
+                </button>
+            </Step>
+            
+            <Step number={2} title="Finish Setup" icon={<PlayIcon />}>
+                <p>After the script has successfully run, click the button below to start the app.</p>
+                <button
+                    onClick={onRetry}
+                    className="mt-2 w-full sm:w-auto inline-flex items-center justify-center px-4 py-2 text-sm font-semibold bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+                >
+                    I've run the script, launch app!
+                </button>
+            </Step>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default SetupGuide;

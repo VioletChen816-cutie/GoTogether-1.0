@@ -1,8 +1,6 @@
 import { supabase } from '../lib/supabaseClient';
-import { Ride, Driver, Request, RequestStatus, Rating, CarInfo } from '../types';
+import { Ride, Driver, Request, RequestStatus, Rating, CarInfo, PassengerRideRequest, FeedItem } from '../types';
 
-// FIX: Added 'car_is_insured' to the select query to fetch the car's insurance status.
-// FIX: Made joins explicit (e.g., profiles!driver_id) to prevent relationship detection errors.
 const rideSelectQuery = `
   id,
   from,
@@ -11,13 +9,14 @@ const rideSelectQuery = `
   seats_available,
   price,
   status,
+  fulfilled_from_request_id,
   car_make,
   car_model,
   car_year,
   car_color,
   car_license_plate,
   car_is_insured,
-  driver:profiles (
+  driver:driver_id (
     id,
     full_name,
     avatar_url,
@@ -29,51 +28,11 @@ const rideSelectQuery = `
     username,
     email
   ),
-  requests (
+  requests!ride_id (
     status,
-    passenger:profiles(id, full_name, avatar_url, average_rating, rating_count, phone_number, is_verified_student, username, email)
+    passenger:passenger_id(id, full_name, avatar_url, average_rating, rating_count, phone_number, is_verified_student, username, email)
   ),
-  ratings (
-    rater_id,
-    ratee_id,
-    rating
-  )
-`;
-
-// FIX: Added 'car_is_insured' to the select query to fetch the car's insurance status.
-// FIX: Made driver join explicit (profiles!driver_id) to prevent relationship detection errors.
-// FIX: Added 'requests' join to correctly fetch passengers for the ride.
-const rideSelectQueryForRequest = `
-  id,
-  from,
-  to,
-  departure_time,
-  seats_available,
-  price,
-  status,
-  car_make,
-  car_model,
-  car_year,
-  car_color,
-  car_license_plate,
-  car_is_insured,
-  driver:profiles (
-    id,
-    full_name,
-    avatar_url,
-    average_rating,
-    rating_count,
-    phone_number,
-    payment_methods,
-    is_verified_student,
-    username,
-    email
-  ),
-  requests (
-    status,
-    passenger:profiles(id, full_name, avatar_url, average_rating, rating_count, phone_number, is_verified_student, username, email)
-  ),
-  ratings (
+  ratings!ride_id (
     rater_id,
     ratee_id,
     rating
@@ -103,7 +62,10 @@ const mapRideData = (ride: any): Ride => {
     ?.filter((req: any) => req.status === 'accepted' && req.passenger)
     .map((req: any) => mapDriverData(req.passenger)) || [];
     
-  // FIX: Added 'is_insured' to the car data object to conform to the 'CarInfo' type.
+  const pendingPassengers = ride.requests
+    ?.filter((req: any) => req.status === 'pending-passenger-approval' && req.passenger)
+    .map((req: any) => mapDriverData(req.passenger)) || [];
+
   const carData: CarInfo | undefined = ride.car_make ? {
     make: ride.car_make,
     model: ride.car_model,
@@ -114,6 +76,7 @@ const mapRideData = (ride: any): Ride => {
   } : undefined;
 
   return {
+    itemType: 'offer',
     id: ride.id,
     from: ride.from,
     to: ride.to,
@@ -122,13 +85,15 @@ const mapRideData = (ride: any): Ride => {
     price: ride.price,
     driver: mapDriverData(ride.driver),
     passengers: acceptedPassengers,
+    pendingPassengers,
     status: ride.status,
     ratings: ride.ratings as Rating[],
     car: carData,
+    fulfilledFromRequestId: ride.fulfilled_from_request_id,
   };
 };
 
-export const getRides = async (): Promise<Ride[]> => {
+const getRides = async (): Promise<Ride[]> => {
   if (!supabase) throw new Error('Supabase client is not initialized');
 
   const { data, error } = await supabase
@@ -147,13 +112,12 @@ export const getRides = async (): Promise<Ride[]> => {
   return data.map(mapRideData);
 };
 
-export const addRide = async (newRide: Omit<Ride, 'id' | 'driver' | 'passengers' | 'status' | 'ratings'>): Promise<any> => {
+export const addRide = async (newRide: Omit<Ride, 'id' | 'driver' | 'passengers' | 'status' | 'ratings' | 'itemType'>): Promise<any> => {
   if (!supabase) throw new Error('Supabase client is not initialized');
 
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('User must be logged in to post a ride');
 
-  // FIX: Added 'car_is_insured' to the insert payload to include the car's insurance status.
   const rideData = {
     "from": newRide.from,
     "to": newRide.to,
@@ -224,34 +188,55 @@ export const requestRide = async (rideId: string): Promise<any> => {
   return data;
 };
 
-const mapRequestData = (req: any): Request => ({
-  id: req.id,
-  createdAt: new Date(req.created_at),
-  status: req.status,
-  ride: mapRideData(req.rides),
-  passenger: mapDriverData(req.profiles),
-});
-
 export const getPassengerRequests = async (): Promise<Request[]> => {
     if (!supabase) return [];
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return [];
 
-    const { data, error } = await supabase
+    // Step 1: Get the user's requests, including their profile info and the ID of the ride they requested.
+    const { data: userRequests, error: reqError } = await supabase
         .from('requests')
-        .select(`
-            id, created_at, status,
-            rides ( ${rideSelectQueryForRequest} ),
-            profiles (id, full_name, avatar_url, average_rating, rating_count, phone_number, is_verified_student, username, email)
-        `)
-        .eq('passenger_id', user.id)
-        .order('created_at', { ascending: false });
+        .select('id, created_at, status, ride_id, passenger:passenger_id(*)')
+        .eq('passenger_id', user.id);
 
-    if (error) {
-        console.error('Error fetching passenger requests:', error.message);
-        throw error;
+    if (reqError) {
+        console.error('Error fetching passenger requests (step 1):', reqError.message);
+        throw reqError;
     }
-    return data.filter(req => req.rides && req.profiles).map(mapRequestData);
+    if (!userRequests || userRequests.length === 0) return [];
+
+    // Step 2: Collect all the unique ride IDs from the requests.
+    const rideIds = [...new Set(userRequests.map(r => r.ride_id).filter(id => id))];
+    if (rideIds.length === 0) return [];
+
+
+    // Step 3: Fetch all the details for those rides in a single query. This is more efficient.
+    const { data: ridesData, error: ridesError } = await supabase
+        .from('rides')
+        .select(rideSelectQuery)
+        .in('id', rideIds);
+    
+    if (ridesError) {
+        console.error('Error fetching ride data for requests (step 2):', ridesError.message);
+        throw ridesError;
+    }
+    if (!ridesData) return [];
+
+    // Step 4: Create a Map for quick lookup of ride details by ride ID.
+    const ridesMap = new Map(ridesData.map(ride => [ride.id, mapRideData(ride)]));
+
+    // Step 5: Combine the request data with the full ride data.
+    const combinedRequests = userRequests
+      .filter(req => ridesMap.has(req.ride_id) && req.passenger)
+      .map(req => ({
+        id: req.id,
+        createdAt: new Date(req.created_at),
+        status: req.status as RequestStatus,
+        ride: ridesMap.get(req.ride_id)!,
+        passenger: mapDriverData(req.passenger),
+    }));
+
+    return combinedRequests.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
 };
 
 export const getDriverRequests = async (): Promise<Request[]> => {
@@ -259,32 +244,50 @@ export const getDriverRequests = async (): Promise<Request[]> => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return [];
 
-    const { data: rideIds, error: rideIdError } = await supabase
+    // Step 1: Get the IDs of all rides posted by the current user.
+    const { data: rideIdsData, error: rideIdError } = await supabase
       .from('rides')
       .select('id')
       .eq('driver_id', user.id);
 
-    if (rideIdError || !rideIds || rideIds.length === 0) {
-      return [];
-    }
-    
-    const { data, error } = await supabase
+    if (rideIdError) throw rideIdError;
+    if (!rideIdsData || rideIdsData.length === 0) return [];
+    const rideIds = rideIdsData.map(r => r.id);
+
+    // Step 2: Fetch all requests associated with those ride IDs.
+    const { data: requestsData, error: requestsError } = await supabase
         .from('requests')
-        .select(`
-            id, created_at, status,
-            rides ( ${rideSelectQueryForRequest} ),
-            profiles (id, full_name, avatar_url, average_rating, rating_count, phone_number, is_verified_student, username, email)
-        `)
-        .in('ride_id', rideIds.map(r => r.id))
-        .order('created_at', { ascending: false });
+        .select('id, created_at, status, ride_id, passenger:passenger_id(*)')
+        .in('ride_id', rideIds);
+
+    if (requestsError) throw requestsError;
+    if (!requestsData || requestsData.length === 0) return [];
+
+    // Step 3: Fetch all the details for the relevant rides in a single query.
+    const { data: ridesData, error: ridesError } = await supabase
+        .from('rides')
+        .select(rideSelectQuery)
+        .in('id', rideIds);
+
+    if (ridesError) throw ridesError;
+    if (!ridesData) return [];
+
+    // Step 4: Create a Map for quick lookup of ride details.
+    const ridesMap = new Map(ridesData.map(ride => [ride.id, mapRideData(ride)]));
+
+    // Step 5: Combine the request data with the full ride data.
+    const validRequests = requestsData
+      .filter(req => ridesMap.has(req.ride_id) && req.passenger)
+      .map(req => ({
+        id: req.id,
+        createdAt: new Date(req.created_at),
+        status: req.status as RequestStatus,
+        ride: ridesMap.get(req.ride_id)!,
+        passenger: mapDriverData(req.passenger),
+    }));
     
-    if (error) {
-        console.error('Error fetching driver requests:', error.message);
-        throw error;
-    }
-    
-    const validData = data.filter(req => req.rides && req.profiles);
-    return validData.map(mapRequestData);
+    // Sort requests by most recent.
+    return validRequests.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
 };
 
 
@@ -301,6 +304,19 @@ export const updateRequestStatus = async (requestId: string, status: RequestStat
         throw error;
     }
     return { success: true };
+};
+
+export const respondToDriverOffer = async (requestId: string, response: 'accepted' | 'rejected'): Promise<void> => {
+    if (!supabase) throw new Error('Supabase client is not initialized');
+    const { error } = await supabase.rpc('passenger_respond_to_offer', {
+        request_id_arg: requestId,
+        response_status: response,
+    });
+
+    if (error) {
+        console.error('Error responding to driver offer:', error.message);
+        throw error;
+    }
 };
 
 export const cancelRide = async (rideId: string): Promise<void> => {
@@ -344,4 +360,177 @@ export const submitRating = async (ratingData: { rideId: string; rateeId: string
         console.error('Error submitting rating:', error);
         throw error;
     }
+};
+
+
+// --- Passenger Ride Requests ---
+
+const getPassengerRideRequests = async (): Promise<PassengerRideRequest[]> => {
+  if (!supabase) throw new Error('Supabase client is not initialized');
+
+  const { data, error } = await supabase
+    .from('passenger_ride_requests')
+    .select(`
+      id,
+      created_at,
+      from,
+      to,
+      departure_date,
+      flexible_time,
+      seats_needed,
+      notes,
+      status,
+      willing_to_split_fuel,
+      passenger:passenger_id (
+        id,
+        full_name,
+        avatar_url,
+        average_rating,
+        rating_count,
+        is_verified_student,
+        username,
+        email
+      )
+    `)
+    .in('status', ['open', 'fulfilled', 'pending-passenger-approval'])
+    .order('departure_date', { ascending: true });
+
+  if (error) {
+    // FIX: Add a check for a missing table. This error commonly occurs if the database schema
+    // hasn't been updated. By catching it here, we prevent the entire app from crashing and
+    // allow other features to function. A warning is logged to guide the developer.
+    if (error.message.includes("Could not find the table 'public.passenger_ride_requests'")) {
+      console.warn("Warning: The 'passenger_ride_requests' table was not found. This feature will be disabled until the database schema is updated.");
+      return [];
+    }
+    console.error('Error fetching passenger ride requests:', error.message);
+    throw error;
+  }
+  if (!data) return [];
+  
+  return data.map((req: any) => ({
+    itemType: 'request',
+    id: req.id,
+    createdAt: new Date(req.created_at),
+    from: req.from,
+    to: req.to,
+    // FIX: Parse date string in local timezone to prevent off-by-one-day errors.
+    // 'YYYY-MM-DD' is parsed as UTC, but 'YYYY/MM/DD' is parsed as local.
+    departureDate: new Date(req.departure_date.replace(/-/g, '/')),
+    flexibleTime: req.flexible_time,
+    seatsNeeded: req.seats_needed,
+    notes: req.notes,
+    status: req.status,
+    passenger: mapDriverData(req.passenger), // re-using this mapper for public profile data
+    willingToSplitFuel: req.willing_to_split_fuel,
+  }));
+}
+
+export const getMyPassengerRideRequests = async (): Promise<PassengerRideRequest[]> => {
+  if (!supabase) throw new Error('Supabase client is not initialized');
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return [];
+
+  const { data, error } = await supabase
+    .from('passenger_ride_requests')
+    .select(`
+      id, created_at, from, to, departure_date, flexible_time, seats_needed, notes, status, willing_to_split_fuel,
+      passenger:passenger_id (
+        id, full_name, avatar_url, average_rating, rating_count, is_verified_student, username, email
+      ),
+      fulfilled_by:fulfilled_by_driver_id (
+        id, full_name, avatar_url, average_rating, rating_count, phone_number, payment_methods, is_verified_student, username, email
+      )
+    `)
+    .eq('passenger_id', user.id)
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error('Error fetching my passenger ride requests:', error.message);
+    throw error;
+  }
+  if (!data) return [];
+  
+  return data.map((req: any) => ({
+    itemType: 'request',
+    id: req.id,
+    createdAt: new Date(req.created_at),
+    from: req.from,
+    to: req.to,
+    // FIX: Parse date string in local timezone to prevent off-by-one-day errors.
+    // 'YYYY-MM-DD' is parsed as UTC, but 'YYYY/MM/DD' is parsed as local.
+    departureDate: new Date(req.departure_date.replace(/-/g, '/')),
+    flexibleTime: req.flexible_time,
+    seatsNeeded: req.seats_needed,
+    notes: req.notes,
+    status: req.status,
+    passenger: mapDriverData(req.passenger),
+    willingToSplitFuel: req.willing_to_split_fuel,
+    fulfilled_by: req.fulfilled_by ? mapDriverData(req.fulfilled_by) : undefined,
+  }));
+}
+
+export const addPassengerRideRequest = async (requestData: Omit<PassengerRideRequest, 'id' | 'createdAt' | 'passenger' | 'status' | 'itemType' | 'fulfilled_by'>) => {
+    if (!supabase) throw new Error('Supabase client is not initialized');
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('User must be logged in to post a ride request');
+
+    const { error } = await supabase
+        .from('passenger_ride_requests')
+        .insert({
+            passenger_id: user.id,
+            from: requestData.from,
+            to: requestData.to,
+            departure_date: requestData.departureDate.toISOString().split('T')[0],
+            flexible_time: requestData.flexibleTime,
+            seats_needed: requestData.seatsNeeded,
+            notes: requestData.notes,
+            willing_to_split_fuel: requestData.willingToSplitFuel,
+        });
+
+    if (error) {
+        console.error('Error adding passenger ride request:', error.message);
+        if (error.message.includes("Could not find the table 'public.passenger_ride_requests'")) {
+            throw new Error("Feature not available. Please update the database schema with the 'passenger_ride_requests' table from schema.md.");
+        }
+        throw error;
+    }
+};
+
+export const createRideFromRequest = async (details: {
+  requestId: string;
+  departureTime: Date;
+  price: number;
+  carId: string;
+}): Promise<void> => {
+  if (!supabase) throw new Error('Supabase client is not initialized');
+  const { error } = await supabase.rpc('create_ride_from_request', {
+    request_id_arg: details.requestId,
+    departure_time_arg: details.departureTime.toISOString(),
+    price_arg: details.price,
+    car_id_arg: details.carId
+  });
+
+  if (error) {
+    console.error('Error creating ride from request:', error.message);
+    throw error;
+  }
+};
+
+
+// --- Combined Feed ---
+export const getFeedItems = async (): Promise<FeedItem[]> => {
+  const [rides, requests] = await Promise.all([
+    getRides(),
+    getPassengerRideRequests(),
+  ]);
+
+  const combined = [...rides, ...requests];
+
+  // Sort by departure date, soonest first
+  return combined.sort((a, b) => {
+    const dateA = a.itemType === 'offer' ? a.departureTime : a.departureDate;
+    const dateB = b.itemType === 'offer' ? b.departureTime : b.departureDate;
+    return new Date(dateA).getTime() - new Date(dateB).getTime();
+  });
 };

@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { UserRole, Ride, Request, AppNotification, UserToRate } from '../types';
+import { UserRole, Ride, Request, AppNotification, UserToRate, FeedItem, PassengerRideRequest, NotificationEnumType, RideStatus, RequestStatus } from '../types';
 import RoleSwitcher from './RoleSwitcher';
 import PassengerView from './PassengerView';
-import DriverView from './DriverView';
+import DriverView from './DriverView.tsx';
 import ProfileSettings from './ProfileSettings';
 import { useAuth } from '../providers/AuthProvider';
 import { useNotification } from '../providers/NotificationProvider';
@@ -13,10 +13,11 @@ import RideCompletionModal from './RideCompletionModal';
 import { submitRating } from '../services/rideService';
 
 interface AuthenticatedAppProps {
-    allRides: Ride[];
+    feedItems: FeedItem[];
     driverRides: Ride[];
-    onPostRide: (newRide: Omit<Ride, 'id' | 'driver' | 'passengers' | 'status' | 'ratings'>) => Promise<boolean>;
+    onPostRide: (newRide: Omit<Ride, 'id' | 'driver' | 'passengers' | 'status' | 'ratings' | 'itemType'>) => Promise<boolean>;
     passengerRequests: Request[];
+    myPassengerRequests: PassengerRideRequest[];
     driverRequests: Request[];
     notifications: AppNotification[];
     setNotifications: React.Dispatch<React.SetStateAction<AppNotification[]>>;
@@ -24,13 +25,13 @@ interface AuthenticatedAppProps {
     setView: (view: 'app' | 'profile') => void;
 }
 
-const AuthenticatedApp: React.FC<AuthenticatedAppProps & { view: 'app' | 'profile' }> = ({ allRides, driverRides, onPostRide, passengerRequests, driverRequests, notifications, setNotifications, refreshData, view, setView }) => {
+const AuthenticatedApp: React.FC<AuthenticatedAppProps & { view: 'app' | 'profile' }> = ({ feedItems, driverRides, onPostRide, passengerRequests, myPassengerRequests, driverRequests, notifications, setNotifications, refreshData, view, setView }) => {
     const [role, setRole] = useState<UserRole>(UserRole.Passenger);
-    const { user } = useAuth();
+    const { user, profile } = useAuth();
     const { showNotification } = useNotification();
     const [confirmedRequest, setConfirmedRequest] = useState<Request | null>(null);
+    const [confirmedRequestExtras, setConfirmedRequestExtras] = useState<{ flexibleTime?: string; notes?: string | null }>({});
     const [rideToShowCompletion, setRideToShowCompletion] = useState<Request | null>(null);
-    const initialModalsShownRef = useRef(false);
 
     // Centralized state for the rating modal
     const [ratingModalState, setRatingModalState] = useState<{ isOpen: boolean; rideId: string; userToRate: UserToRate; } | null>(null);
@@ -84,6 +85,18 @@ const AuthenticatedApp: React.FC<AuthenticatedAppProps & { view: 'app' | 'profil
             .on(
                 'postgres_changes',
                 {
+                    event: 'INSERT',
+                    schema: 'public',
+                    table: 'requests',
+                    filter: `passenger_id=eq.${user.id}`
+                },
+                (payload) => {
+                    refreshData();
+                }
+            )
+            .on(
+                'postgres_changes',
+                {
                     event: 'UPDATE',
                     schema: 'public',
                     table: 'requests',
@@ -111,46 +124,75 @@ const AuthenticatedApp: React.FC<AuthenticatedAppProps & { view: 'app' | 'profil
         };
     }, [user, showNotification, refreshData, passengerRequests, driverRequests]);
 
-    // Check for completed rides to show the post-ride summary modal, or for newly accepted rides.
+    // Check for newly accepted or completed rides to show relevant pop-up modals for both passengers and drivers.
     useEffect(() => {
-        if (initialModalsShownRef.current || role !== UserRole.Passenger || !user) {
-            return;
-        }
+        if (!user) return;
     
-        // Prioritize showing confirmation for newly accepted rides based on unread notifications
-        if (notifications.length > 0 && passengerRequests.length > 0) {
-            const unreadAcceptedNotification = notifications.find(
-                n => n.type === 'REQUEST_ACCEPTED' && !n.is_read && n.request_id
+        // --- Passenger Modal Logic ---
+        if (role === UserRole.Passenger) {
+            // Check for newly accepted rides to show confirmation modal
+            const shownConfirmationsKey = `goTogether_shownConfirmationModals_${user.id}`;
+            const shownConfirmationIds = JSON.parse(localStorage.getItem(shownConfirmationsKey) || '[]');
+            const newlyAcceptedRequest = passengerRequests.find(req =>
+                req.status === RequestStatus.Accepted && !shownConfirmationIds.includes(req.id)
             );
     
-            if (unreadAcceptedNotification) {
-                const request = passengerRequests.find(r => r.id === unreadAcceptedNotification.request_id);
-                if (request) {
-                    setTimeout(() => {
-                        setConfirmedRequest(request);
-                    }, 500);
-                    initialModalsShownRef.current = true;
-                    return; // Show one modal at a time on login
-                }
+            if (newlyAcceptedRequest) {
+                setTimeout(() => {
+                    if (newlyAcceptedRequest.ride.fulfilledFromRequestId) {
+                        const originalPassengerRequest = myPassengerRequests.find(prr => prr.id === newlyAcceptedRequest.ride.fulfilledFromRequestId);
+                         if (originalPassengerRequest) {
+                            setConfirmedRequestExtras({
+                                flexibleTime: originalPassengerRequest.flexibleTime,
+                                notes: originalPassengerRequest.notes
+                            });
+                        }
+                    }
+                    setConfirmedRequest(newlyAcceptedRequest);
+                    const newShownIds = [...new Set([...shownConfirmationIds, newlyAcceptedRequest.id])];
+                    localStorage.setItem(shownConfirmationsKey, JSON.stringify(newShownIds));
+                }, 500);
+                return; // Show one modal at a time
             }
-        }
     
-        // If no new confirmations, check for completed rides to show the post-ride summary modal
-        if (passengerRequests.length > 0) {
+            // Check for newly completed rides to show rating modal
+            const shownCompletionsKey = `goTogether_shownCompletionModals_${user.id}`;
+            const shownCompletionIds = JSON.parse(localStorage.getItem(shownCompletionsKey) || '[]');
             const unratedCompletedRequest = passengerRequests.find(req =>
                 req.ride.status === 'completed' &&
-                !req.ride.ratings.some(r => r.rater_id === user.id && r.ratee_id === req.ride.driver.id)
+                !req.ride.ratings.some(r => r.rater_id === user.id && r.ratee_id === req.ride.driver.id) &&
+                !shownCompletionIds.includes(req.ride.id)
             );
     
             if (unratedCompletedRequest) {
-                // Use a short timeout to prevent the modal from flashing aggressively on load
                 setTimeout(() => {
                     setRideToShowCompletion(unratedCompletedRequest);
+                    const newShownIds = [...new Set([...shownCompletionIds, unratedCompletedRequest.ride.id])];
+                    localStorage.setItem(shownCompletionsKey, JSON.stringify(newShownIds));
                 }, 500);
-                initialModalsShownRef.current = true; // Mark as checked so it only runs once per session
+                return; // Show one modal at a time
             }
         }
-    }, [passengerRequests, notifications, user, role]);
+        
+        // --- Driver Modal Logic ---
+        if (role === UserRole.Driver) {
+            const shownDriverConfirmationsKey = `goTogether_shownDriverConfirmationModals_${user.id}`;
+            const shownConfirmationIds = JSON.parse(localStorage.getItem(shownDriverConfirmationsKey) || '[]');
+            const newlyAcceptedByPassenger = driverRequests.find(req =>
+                req.status === RequestStatus.Accepted &&
+                req.ride.fulfilledFromRequestId && // This indicates it was an offer they made
+                !shownConfirmationIds.includes(req.id)
+            );
+    
+            if (newlyAcceptedByPassenger) {
+                setTimeout(() => {
+                    setConfirmedRequest(newlyAcceptedByPassenger);
+                    const newShownIds = [...new Set([...shownConfirmationIds, newlyAcceptedByPassenger.id])];
+                    localStorage.setItem(shownDriverConfirmationsKey, JSON.stringify(newShownIds));
+                }, 500);
+            }
+        }
+    }, [passengerRequests, myPassengerRequests, driverRequests, user, role]);
 
     if (view === 'profile') {
         return <ProfileSettings backToApp={() => setView('app')} />;
@@ -158,6 +200,19 @@ const AuthenticatedApp: React.FC<AuthenticatedAppProps & { view: 'app' | 'profil
 
     const handleCloseConfirmation = () => {
         setConfirmedRequest(null);
+        setConfirmedRequestExtras({});
+    };
+
+    const handleRequestFulfilledByDriver = (newlyCreatedRequest: Request) => {
+        // Find the original PassengerRideRequest to get notes/flexibleTime
+        const originalRequest = myPassengerRequests.find(prr => prr.id === newlyCreatedRequest.ride.fulfilledFromRequestId);
+        if(originalRequest) {
+            setConfirmedRequestExtras({
+                flexibleTime: originalRequest.flexibleTime,
+                notes: originalRequest.notes,
+            });
+        }
+        setConfirmedRequest(newlyCreatedRequest);
     };
 
     return (
@@ -166,12 +221,14 @@ const AuthenticatedApp: React.FC<AuthenticatedAppProps & { view: 'app' | 'profil
              <div className="mt-8">
                 {role === UserRole.Passenger ? (
                     <PassengerView
-                        allRides={allRides}
+                        feedItems={feedItems}
                         passengerRequests={passengerRequests}
+                        myPassengerRequests={myPassengerRequests}
                         notifications={notifications}
                         setNotifications={setNotifications}
                         refreshData={refreshData}
                         onOpenRatingModal={handleOpenRatingModal}
+                        onRequestFulfilled={handleRequestFulfilledByDriver}
                     />
                 ) : (
                     <DriverView 
@@ -187,8 +244,10 @@ const AuthenticatedApp: React.FC<AuthenticatedAppProps & { view: 'app' | 'profil
             </div>
             <RideConfirmationModal 
                 request={confirmedRequest}
-                userRole={role === UserRole.Driver ? 'driver' : 'passenger'}
+                currentUserProfile={profile}
                 onClose={handleCloseConfirmation}
+                flexibleTime={confirmedRequestExtras.flexibleTime}
+                notes={confirmedRequestExtras.notes}
             />
              <RideCompletionModal
                 request={rideToShowCompletion}

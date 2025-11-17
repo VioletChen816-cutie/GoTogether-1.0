@@ -1,12 +1,14 @@
 import React from 'react';
-import { Request } from '../types';
+import { Request, Profile } from '../types';
 import ContactInfo from './ContactInfo';
 import { DEFAULT_AVATAR_URL } from '../constants';
 
 interface RideConfirmationModalProps {
   request: Request | null;
-  userRole: 'driver' | 'passenger';
+  currentUserProfile: Profile | null;
   onClose: () => void;
+  flexibleTime?: string;
+  notes?: string | null;
 }
 
 const InfoRow: React.FC<{ icon: React.ReactElement, label: string, value: string }> = ({ icon, label, value }) => (
@@ -39,27 +41,33 @@ const UserCard: React.FC<{ user: { name: string; avatar_url: string | null; id: 
 };
 
 
-const RideConfirmationModal: React.FC<RideConfirmationModalProps> = ({ request, userRole, onClose }) => {
-  if (!request) return null;
+const RideConfirmationModal: React.FC<RideConfirmationModalProps> = ({ request, currentUserProfile, onClose, flexibleTime, notes }) => {
+  if (!request || !currentUserProfile) return null;
 
   const { ride, passenger } = request;
   const { from, to, departureTime, car } = ride;
 
+  const isCurrentUserTheDriver = currentUserProfile.id === ride.driver.id;
+
   // Determine which user's contact info to display.
   // If the current user is a passenger, show the driver's number.
   // If the current user is a driver, show the passenger's number.
-  const contactUser = userRole === 'passenger' ? ride.driver : passenger;
+  const contactUser = isCurrentUserTheDriver ? passenger : ride.driver;
 
   const formattedDate = departureTime.toLocaleDateString(undefined, {
     weekday: 'long',
     month: 'long',
     day: 'numeric',
   });
+
   const formattedTime = departureTime.toLocaleTimeString(undefined, {
     hour: '2-digit',
     minute: '2-digit',
     hour12: true,
   });
+
+  const timeDisplayValue = flexibleTime || formattedTime;
+  const timeDisplayLabel = flexibleTime ? "Time Preference" : "Departure Time";
 
   return (
     <div 
@@ -74,8 +82,14 @@ const RideConfirmationModal: React.FC<RideConfirmationModalProps> = ({ request, 
             <span className="inline-block p-3 bg-green-100 rounded-full">
                 <svg className="w-8 h-8 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
             </span>
-            <h2 className="text-2xl font-bold text-slate-800 mt-4">Ride Confirmed!</h2>
-            <p className="text-slate-500">You're all set. Here are the details for your upcoming trip.</p>
+            <h2 className="text-2xl font-bold text-slate-800 mt-4">
+              {flexibleTime ? 'Request Accepted!' : 'Ride Confirmed!'}
+            </h2>
+            <p className="text-slate-500">
+              {flexibleTime && isCurrentUserTheDriver
+                ? "You're all set to connect. Please reach out to the passenger to coordinate details."
+                : "You're all set. Here are the details for your upcoming trip."}
+            </p>
         </div>
         
         <div className="mt-6 border-t border-b border-slate-200 divide-y divide-slate-200">
@@ -87,8 +101,8 @@ const RideConfirmationModal: React.FC<RideConfirmationModalProps> = ({ request, 
                 />
                  <InfoRow 
                     icon={<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" /></svg>}
-                    label="Departure Time"
-                    value={formattedTime}
+                    label={timeDisplayLabel}
+                    value={timeDisplayValue}
                 />
             </div>
              <div className="py-5">
@@ -101,8 +115,11 @@ const RideConfirmationModal: React.FC<RideConfirmationModalProps> = ({ request, 
         </div>
 
         <div className="mt-6">
-            {userRole === 'passenger' && <UserCard user={ride.driver} role="Your Driver" />}
-            {userRole === 'driver' && <UserCard user={passenger} role="Your Passenger" />}
+            {isCurrentUserTheDriver ? (
+              <UserCard user={passenger} role="Your Passenger" />
+            ) : (
+              <UserCard user={ride.driver} role="Your Driver" />
+            )}
             
             <div className="mt-4">
               <ContactInfo 
@@ -110,7 +127,21 @@ const RideConfirmationModal: React.FC<RideConfirmationModalProps> = ({ request, 
                   userPhoneNumber={contactUser.phone_number}
               />
             </div>
+
+            {flexibleTime && isCurrentUserTheDriver && (
+                <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-700 text-left">
+                    <p className="font-semibold">Next Step:</p>
+                    <p className="mt-1">Contact your passenger to confirm the exact pickup time and location.</p>
+                </div>
+            )}
             
+            {notes && (
+                <div className="mt-4 text-left">
+                    <p className="text-sm font-semibold text-slate-700">Passenger's Note:</p>
+                    <p className="mt-1 text-sm text-slate-600 bg-slate-50 p-3 rounded-lg border border-slate-200 italic">"{notes}"</p>
+                </div>
+            )}
+
             {car && (
                 <div className="mt-4 p-4 bg-slate-50 rounded-lg space-y-3">
                     <h4 className="text-sm font-semibold text-slate-700">Vehicle Information</h4>

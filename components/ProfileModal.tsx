@@ -1,6 +1,7 @@
 import React from 'react';
 import { Driver } from '../types';
 import { DEFAULT_AVATAR_URL } from '../constants';
+import ContactInfo from './ContactInfo';
 
 interface ProfileModalProps {
   profile: Driver | null;
@@ -54,6 +55,10 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ profile, onClose }) => {
           ) : (
             <p className="ml-1 text-md text-slate-600">No ratings</p>
           )}
+        </div>
+        
+        <div className="mt-6 border-t border-slate-200 pt-4">
+            <ContactInfo rideConfirmed={!!profile.phone_number} userPhoneNumber={profile.phone_number} />
         </div>
 
       </div>

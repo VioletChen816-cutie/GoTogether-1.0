@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Ride, Request, AppNotification } from './types';
-import { getRides, addRide, getPassengerRequests, getDriverRequests, getDriverRides } from './services/rideService';
+import { Ride, Request, AppNotification, FeedItem, PassengerRideRequest } from './types';
+import { getFeedItems, addRide, getPassengerRequests, getDriverRequests, getDriverRides, getMyPassengerRideRequests } from './services/rideService';
 import { getNotificationsForUser } from './services/notificationService';
 import Header from './components/Header';
 import PassengerView from './components/PassengerView';
@@ -9,57 +9,95 @@ import AuthModal from './components/AuthModal';
 import { useAuth } from './providers/AuthProvider';
 import Notification from './components/Notification';
 import { supabase } from './lib/supabaseClient';
+import Footer from './components/Footer';
+import SetupGuide from './components/SetupGuide';
 
 const App: React.FC = () => {
   const { user, loading: authLoading } = useAuth();
-  const [rides, setRides] = useState<Ride[]>([]);
+  const [feedItems, setFeedItems] = useState<FeedItem[]>([]);
   const [driverRides, setDriverRides] = useState<Ride[]>([]);
   const [passengerRequests, setPassengerRequests] = useState<Request[]>([]);
+  const [myPassengerRequests, setMyPassengerRequests] = useState<PassengerRideRequest[]>([]);
   const [driverRequests, setDriverRequests] = useState<Request[]>([]);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [dataLoading, setDataLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [view, setView] = useState<'app' | 'profile'>('app');
+  const [needsDbSetup, setNeedsDbSetup] = useState(!supabase);
   const isInitialLoad = useRef(true);
 
   const fetchData = useCallback(async () => {
-    try {
-      setDataLoading(true);
-      const [ridesData, pRequests, dRequests, driverRidesData, notificationsData] = await Promise.all([
-        getRides(),
-        user ? getPassengerRequests() : Promise.resolve([]),
-        user ? getDriverRequests() : Promise.resolve([]),
-        user ? getDriverRides() : Promise.resolve([]),
-        user ? getNotificationsForUser() : Promise.resolve([]),
-      ]);
-      setRides(ridesData);
-      setPassengerRequests(pRequests);
-      setDriverRequests(dRequests);
-      setDriverRides(driverRidesData);
-      setNotifications(notificationsData);
-      setError(null);
-    } catch (err: any) {
-      setError('Failed to load data. Please try again later.');
-      console.error(err.message || err);
-    } finally {
-      setDataLoading(false);
-      isInitialLoad.current = false;
+    setDataLoading(true);
+    setError(null);
+    setNeedsDbSetup(false);
+
+    if (!supabase) {
+        setNeedsDbSetup(true);
+        setError('Your Supabase credentials are not configured. Please follow the steps below.');
+        setDataLoading(false);
+        return;
     }
+
+    const results = await Promise.allSettled([
+      getFeedItems(),
+      user ? getPassengerRequests() : Promise.resolve([]),
+      user ? getDriverRequests() : Promise.resolve([]),
+      user ? getDriverRides() : Promise.resolve([]),
+      user ? getNotificationsForUser() : Promise.resolve([]),
+      user ? getMyPassengerRideRequests() : Promise.resolve([]),
+    ]);
+
+    const [
+      feedResult,
+      pRequestsResult,
+      dRequestsResult,
+      driverRidesResult,
+      notificationsResult,
+      myPRequestsResult,
+    ] = results;
+
+    let hasError = false;
+    results.forEach((result, index) => {
+      if (result.status === 'rejected') {
+        hasError = true;
+        console.error(`Failed to fetch data for promise at index ${index}:`, result.reason);
+      }
+    });
+
+    if (feedResult.status === 'fulfilled') {
+      setFeedItems(feedResult.value);
+    } else {
+      const reason = feedResult.reason as any;
+      if (reason?.message?.includes('Could not find the table')) {
+        setNeedsDbSetup(true);
+        setError('It looks like the database tables are missing. Please follow the steps below to set up your project.');
+      } else {
+        setError('Failed to load rides. Please try again later.');
+      }
+    }
+    
+    if (pRequestsResult.status === 'fulfilled') setPassengerRequests(pRequestsResult.value as Request[]);
+    if (dRequestsResult.status === 'fulfilled') setDriverRequests(dRequestsResult.value as Request[]);
+    if (driverRidesResult.status === 'fulfilled') setDriverRides(driverRidesResult.value as Ride[]);
+    if (notificationsResult.status === 'fulfilled') setNotifications(notificationsResult.value as AppNotification[]);
+    if (myPRequestsResult.status === 'fulfilled') setMyPassengerRequests(myPRequestsResult.value as PassengerRideRequest[]);
+    
+    if (hasError && feedResult.status === 'fulfilled') {
+        console.warn('Some user-specific data failed to load, but the main feed is available.');
+    }
+
+    setDataLoading(false);
+    isInitialLoad.current = false;
   }, [user]);
 
   useEffect(() => {
-    // Don't fetch data until we know the user's authentication status
-    // to avoid race conditions.
     if (authLoading) return;
     fetchData();
   }, [authLoading, fetchData]);
 
-  // Real-time notification listener
   useEffect(() => {
     if (!user || !supabase) return;
 
-    // FIX: Removed generic type argument from `.on()` to prevent "Untyped function calls may not accept type arguments" error.
-    // This is often caused by a missing Supabase client type definition, but the explicit cast of `payload.new` maintains functionality.
     const channel = supabase.channel(`notifications-for-${user.id}`)
       .on(
         'postgres_changes',
@@ -81,7 +119,40 @@ const App: React.FC = () => {
     }
   }, [user]);
 
-  const handleAddRide = useCallback(async (newRide: Omit<Ride, 'id' | 'driver' | 'passengers' | 'status' | 'ratings'>) => {
+  useEffect(() => {
+    if (!supabase) return;
+
+    const channel = supabase.channel('passenger-ride-requests-realtime')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'passenger_ride_requests' },
+        (payload) => {
+          if (payload.eventType === 'INSERT') {
+            fetchData();
+          } else if (payload.eventType === 'UPDATE') {
+            setFeedItems(currentItems =>
+              currentItems.map(item => {
+                if (item.itemType === 'request' && item.id === payload.new.id) {
+                  return {
+                    ...item,
+                    status: payload.new.status,
+                  };
+                }
+                return item;
+              })
+            );
+          }
+        }
+      )
+      .subscribe();
+    
+    return () => {
+      supabase.removeChannel(channel);
+    }
+  }, [supabase, fetchData]);
+
+
+  const handleAddRide = useCallback(async (newRide: Omit<Ride, 'id' | 'driver' | 'passengers' | 'status' | 'ratings' | 'itemType'>) => {
     try {
       await addRide(newRide);
       await fetchData();
@@ -93,7 +164,7 @@ const App: React.FC = () => {
     }
   }, [fetchData]);
 
-  if (authLoading || (dataLoading && isInitialLoad.current)) {
+  if (authLoading || (dataLoading && isInitialLoad.current && !needsDbSetup)) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50 text-slate-700">
         <div className="flex items-center space-x-3">
@@ -107,6 +178,10 @@ const App: React.FC = () => {
     );
   }
 
+  if (needsDbSetup) {
+    return <SetupGuide onRetry={fetchData} error={error} />;
+  }
+
   return (
     <>
       <div className="min-h-screen bg-slate-50 text-slate-800 font-sans">
@@ -117,13 +192,14 @@ const App: React.FC = () => {
             setNotifications={setNotifications}
           />
           <main className="mt-8">
-            {error && <div className="text-center text-red-500 p-4 bg-red-100 rounded-md">{error}</div>}
+            {error && <div className="text-center text-red-500 p-4 bg-red-100 rounded-md mb-6">{error}</div>}
             {user ? (
               <AuthenticatedApp
-                allRides={rides}
+                feedItems={feedItems}
                 driverRides={driverRides}
                 onPostRide={handleAddRide}
                 passengerRequests={passengerRequests}
+                myPassengerRequests={myPassengerRequests}
                 driverRequests={driverRequests}
                 notifications={notifications}
                 setNotifications={setNotifications}
@@ -132,11 +208,8 @@ const App: React.FC = () => {
                 setView={setView}
               />
             ) : (
-              // FIX: Provide a dummy onOpenRatingModal prop for the unauthenticated view.
-              // Rating is not possible for non-logged-in users, and the UI does not show the rate button,
-              // so a no-op function satisfies the prop type requirement.
               <PassengerView
-                allRides={rides}
+                feedItems={feedItems}
                 passengerRequests={[]}
                 notifications={[]}
                 refreshData={fetchData}
@@ -144,6 +217,7 @@ const App: React.FC = () => {
               />
             )}
           </main>
+          <Footer />
         </div>
       </div>
       <Notification />

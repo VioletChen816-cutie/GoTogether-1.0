@@ -65,6 +65,7 @@ export interface Car extends CarInfo {
 }
 
 export interface Ride {
+  itemType: 'offer';
   id: string;
   from: string;
   to: string;
@@ -73,16 +74,37 @@ export interface Ride {
   driver: Driver;
   price: number;
   passengers: Driver[];
+  pendingPassengers?: Driver[];
   status: RideStatus;
   ratings: Rating[];
   car?: CarInfo;
+  fulfilledFromRequestId?: string | null;
 }
+
+export interface PassengerRideRequest {
+  itemType: 'request';
+  id: string;
+  createdAt: Date;
+  passenger: Driver;
+  from: string;
+  to: string;
+  departureDate: Date;
+  flexibleTime: string;
+  seatsNeeded: number;
+  notes: string | null;
+  status: 'open' | 'fulfilled' | 'cancelled' | 'pending-passenger-approval';
+  willingToSplitFuel: boolean;
+  fulfilled_by?: Driver;
+}
+
+export type FeedItem = Ride | PassengerRideRequest;
 
 export enum RequestStatus {
   Pending = 'pending',
   Accepted = 'accepted',
   Rejected = 'rejected',
   Cancelled = 'cancelled',
+  PendingPassengerApproval = 'pending-passenger-approval',
 }
 
 export interface Request {
@@ -111,6 +133,7 @@ export enum NotificationEnumType {
   PassengerCancelled = 'PASSENGER_CANCELLED',
   DriverCancelledRide = 'DRIVER_CANCELLED_RIDE',
   BookingCancelled = 'BOOKING_CANCELLED',
+  PassengerRequestAccepted = 'PASSENGER_REQUEST_ACCEPTED',
 }
 
 export interface AppNotification {

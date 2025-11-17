@@ -87,7 +87,7 @@ const Header: React.FC<HeaderProps> = ({ setView, notifications, setNotification
                   <div className="py-1">
                     <button onClick={handleProfileClick} className="w-full text-left flex items-center space-x-3 px-4 py-2 text-sm text-slate-700 hover:bg-slate-100">
                       <UserIcon />
-                      <span>Profile</span>
+                      <span>My Profile</span>
                     </button>
                     <button onClick={handleSignOut} className="w-full text-left flex items-center space-x-3 px-4 py-2 text-sm text-slate-700 hover:bg-slate-100">
                       <LogoutIcon />

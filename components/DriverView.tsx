@@ -1,5 +1,4 @@
 import React, { useState, useMemo } from 'react';
-// FIX: Added RequestStatus to imports to use the enum.
 import { Ride, Request, RideStatus, UserToRate, AppNotification, NotificationEnumType, RequestStatus } from '../types';
 import Tabs from './Tabs';
 import PostARide from './PostARide';
@@ -11,7 +10,7 @@ import { useNotification } from '../providers/NotificationProvider';
 import { markRequestNotificationAsRead } from '../services/notificationService';
 
 interface DriverViewProps {
-  onPostRide: (newRide: Omit<Ride, 'id' | 'driver' | 'passengers' | 'status' | 'ratings'>) => Promise<boolean>;
+  onPostRide: (newRide: Omit<Ride, 'id' | 'driver' | 'passengers' | 'status' | 'ratings' | 'itemType'>) => Promise<boolean>;
   postedRides: Ride[];
   driverRequests: Request[];
   notifications: AppNotification[];
@@ -43,7 +42,7 @@ const DriverView: React.FC<DriverViewProps> = ({ onPostRide, postedRides, driver
   const driverTabs = [
     { name: 'Post Ride', icon: <PlusIcon /> },
     { name: 'Ride Requests', icon: <UsersIcon />, ...(rideRequestsBadgeCount > 0 && { badgeCount: rideRequestsBadgeCount }) },
-    { name: 'My Posted Rides', icon: <ListIcon /> },
+    { name: 'My Rides', icon: <ListIcon /> },
     { name: 'Ride History', icon: <ClockIcon /> }
   ];
 
@@ -65,17 +64,16 @@ const DriverView: React.FC<DriverViewProps> = ({ onPostRide, postedRides, driver
 
   const handlePostRideSuccess = (success: boolean) => {
     if (success) {
-      setActiveTab('My Posted Rides');
+      setActiveTab('My Rides');
     }
   }
 
   const handleAccept = async (request: Request) => {
     try {
-      // FIX: Argument of type '"accepted"' is not assignable to parameter of type 'RequestStatus'. Changed to use the enum value.
       await updateRequestStatus(request.id, RequestStatus.Accepted);
       await markRequestNotificationAsRead(request.id, NotificationEnumType.NewRequest);
       onAcceptRequest(request); // Trigger confirmation modal
-      refreshData(); // Refresh data in the background
+      await refreshData(); // Refresh data in the background
     } catch (error) {
       alert('Failed to accept request. The ride might be full.');
       console.error(error);
@@ -148,7 +146,7 @@ const DriverView: React.FC<DriverViewProps> = ({ onPostRide, postedRides, driver
           </div>
         )}
 
-        {activeTab === 'My Posted Rides' && (
+        {activeTab === 'My Rides' && (
           <div className="space-y-4">
             {activeAndCancelledRides.length > 0 ? (
               activeAndCancelledRides.map(ride => 

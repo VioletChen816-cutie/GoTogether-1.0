@@ -30,7 +30,8 @@ const TrashIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w
 
 
 interface PostARideProps {
-  onPostRide: (newRide: Omit<Ride, 'id' | 'driver' | 'passengers' | 'status' | 'ratings'>) => Promise<boolean>;
+  // FIX: Omitted 'itemType' to align with the parent component's prop type and the `addRide` service signature.
+  onPostRide: (newRide: Omit<Ride, 'id' | 'driver' | 'passengers' | 'status' | 'ratings' | 'itemType'>) => Promise<boolean>;
   onPostRideSuccess: (success: boolean) => void;
 }
 type PaymentMethodType = 'venmo' | 'zelle' | 'cashapp';

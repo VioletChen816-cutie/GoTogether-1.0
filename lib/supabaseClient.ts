@@ -5,11 +5,24 @@ const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYm
 
 let supabase: SupabaseClient | null = null;
 
+// The app will guide the user through setup if the schema is missing,
+// but credentials are now hardcoded.
 try {
   supabase = createClient(supabaseUrl, supabaseAnonKey);
 } catch (e) {
-  console.error("Failed to create Supabase client. Please check your URL and Key.", e);
+  console.error("Failed to create Supabase client with the provided credentials.", e);
   supabase = null;
 }
+
+/**
+ * This function is deprecated as credentials are now hardcoded.
+ * It is kept for compatibility but will log a warning if called.
+ * @param url The Supabase project URL.
+ * @param key The Supabase anon public key.
+ */
+export const updateSupabaseCredentials = (url: string, key: string) => {
+    console.warn("Supabase credentials are now hardcoded in lib/supabaseClient.ts and cannot be updated at runtime.");
+};
+
 
 export { supabase };

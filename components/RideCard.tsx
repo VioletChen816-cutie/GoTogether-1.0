@@ -38,8 +38,10 @@ const PassengerList: React.FC<{
   onRatePassenger?: (rideId: string, userToRate: UserToRate) => void 
 }> = ({ ride, onProfileClick, onRatePassenger }) => {
   const { user } = useAuth();
+  const hasConfirmedPassengers = ride.passengers && ride.passengers.length > 0;
+  const hasPendingPassengers = ride.pendingPassengers && ride.pendingPassengers.length > 0;
 
-  if (ride.passengers.length === 0) {
+  if (!hasConfirmedPassengers && !hasPendingPassengers) {
     return (
        <div className="text-right">
           <p className="text-sm font-medium text-slate-500">No passengers yet</p>
@@ -85,35 +87,66 @@ const PassengerList: React.FC<{
   }
 
   // Contact UI for active rides
-  if (ride.status === RideStatus.Active && ride.passengers.length > 0) {
+  if (ride.status === RideStatus.Active && (hasConfirmedPassengers || hasPendingPassengers)) {
     return (
       <div className="w-full">
-          <h3 className="text-sm font-semibold text-slate-600 mb-2">Confirmed Passengers:</h3>
-          <div className="space-y-2">
-              {ride.passengers.map(p => {
-                return (
-                  <div key={p.id} className="flex items-center justify-between bg-slate-100/80 p-2 rounded-lg">
-                      <button
-                        type="button"
-                        onClick={() => onProfileClick(p)}
-                        className="flex items-center space-x-2 text-left"
-                      >
-                          <img className="h-8 w-8 rounded-full object-cover" src={p.avatar_url || DEFAULT_AVATAR_URL} alt={p.name} />
-                           <div>
+          {hasConfirmedPassengers && (
+            <>
+              <h3 className="text-sm font-semibold text-slate-600 mb-2">Confirmed Passengers:</h3>
+              <div className="space-y-2">
+                  {ride.passengers.map(p => {
+                    return (
+                      <div key={p.id} className="flex items-center justify-between bg-slate-100/80 p-2 rounded-lg">
+                          <button
+                            type="button"
+                            onClick={() => onProfileClick(p)}
+                            className="flex items-center space-x-2 text-left"
+                          >
+                              <img className="h-8 w-8 rounded-full object-cover" src={p.avatar_url || DEFAULT_AVATAR_URL} alt={p.name} />
+                               <div>
+                                    <div className="flex items-center">
+                                        <span className="text-sm font-medium text-slate-800">{p.name} {p.username && `(${p.username})`}</span>
+                                        {p.is_verified_student && <VerifiedBadge className="ml-1" />}
+                                    </div>
+                                    {p.email && <p className="text-xs text-slate-500">{p.email}</p>}
+                                </div>
+                          </button>
+                          <div className="flex items-center">
+                              <ContactActions phoneNumber={p.phone_number} userType="driver" />
+                          </div>
+                      </div>
+                    )
+                  })}
+              </div>
+            </>
+          )}
+
+          {hasPendingPassengers && (
+            <div className={hasConfirmedPassengers ? 'mt-4' : ''}>
+              <h3 className="text-sm font-semibold text-slate-600 mb-2">Pending Passengers:</h3>
+              <div className="space-y-2">
+                  {(ride.pendingPassengers || []).map(p => (
+                    <div key={p.id} className="flex items-center justify-between bg-slate-100/80 p-2 rounded-lg opacity-80">
+                        <button
+                          type="button"
+                          onClick={() => onProfileClick({ ...p, phone_number: null })}
+                          className="flex items-center space-x-2 text-left"
+                        >
+                            <img className="h-8 w-8 rounded-full object-cover" src={p.avatar_url || DEFAULT_AVATAR_URL} alt={p.name} />
+                            <div>
                                 <div className="flex items-center">
                                     <span className="text-sm font-medium text-slate-800">{p.name} {p.username && `(${p.username})`}</span>
                                     {p.is_verified_student && <VerifiedBadge className="ml-1" />}
                                 </div>
                                 {p.email && <p className="text-xs text-slate-500">{p.email}</p>}
                             </div>
-                      </button>
-                      <div className="flex items-center">
-                          <ContactActions phoneNumber={p.phone_number} userType="driver" />
-                      </div>
-                  </div>
-                )
-              })}
-          </div>
+                        </button>
+                        <span className="text-xs font-semibold text-purple-800 bg-purple-100 px-2 py-1 rounded-full">Awaiting Approval</span>
+                    </div>
+                  ))}
+              </div>
+            </div>
+          )}
       </div>
     )
   }
@@ -288,10 +321,29 @@ const RideCard: React.FC<RideCardProps> = ({ ride, requestStatus, refreshData, i
   const shouldShowDisclaimer = status === RideStatus.Active;
   const shouldShowCopyButton = user && driver.payment_methods && driver.payment_methods.length > 0 && !isDriverView && status === RideStatus.Completed && isHistoryView;
 
+  const handleDriverProfileClick = () => {
+    // Passenger can see driver's contact info only if their request is accepted.
+    // The driver can see their own info.
+    const isCurrentUserAccepted = ride.passengers.some(p => p.id === user?.id);
+    if (isOwnRide || isCurrentUserAccepted) {
+        setViewingProfile(driver);
+    } else {
+        setViewingProfile({ ...driver, phone_number: null });
+    }
+  };
+
   return (
     <>
-      <div className={`bg-white rounded-2xl shadow-sm hover:shadow-md transition-shadow duration-300 border border-slate-200/80 divide-y divide-slate-100 ${getCardStyleClasses()}`}>
-        <div className="p-6">
+      <div className={`relative bg-white rounded-2xl shadow-sm hover:shadow-md transition-shadow duration-300 border border-slate-200/80 divide-y divide-slate-100 ${getCardStyleClasses()}`}>
+        <div className="absolute top-4 left-6">
+            <span 
+                className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-800"
+                {...(ride.fulfilledFromRequestId && { title: "This offer fulfills a passenger's request." })}
+            >
+                OFFER
+            </span>
+        </div>
+        <div className="p-6 pt-12">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center">
             <div className="flex items-center space-x-4">
                <div className="text-center w-20">
@@ -340,7 +392,7 @@ const RideCard: React.FC<RideCardProps> = ({ ride, requestStatus, refreshData, i
                 ) : (
                     <button
                         type="button"
-                        onClick={() => setViewingProfile(driver)}
+                        onClick={handleDriverProfileClick}
                         disabled={isOwnRide}
                         className="flex items-center space-x-3 text-left p-1 -m-1 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:cursor-default disabled:hover:bg-transparent hover:bg-slate-100"
                     >

@@ -129,7 +129,7 @@ const PassengerList: React.FC<{
                     <div key={p.id} className="flex items-center justify-between bg-slate-100/80 p-2 rounded-lg opacity-80">
                         <button
                           type="button"
-                          onClick={() => onProfileClick({ ...p, phone_number: null })}
+                          onClick={() => onProfileClick(p)}
                           className="flex items-center space-x-2 text-left"
                         >
                             <img className="h-8 w-8 rounded-full object-cover" src={p.avatar_url || DEFAULT_AVATAR_URL} alt={p.name} />
@@ -186,7 +186,7 @@ const RideCard: React.FC<RideCardProps> = ({ ride, requestStatus, refreshData, i
   const { user, openAuthModal } = useAuth();
   const { from, to, departureTime, seatsAvailable, driver, price, passengers, status, ratings, car } = ride;
   const [isLoading, setIsLoading] = useState(false);
-  const [viewingProfile, setViewingProfile] = useState<Driver | null>(null);
+  const [viewingProfile, setViewingProfile] = useState<{ profile: Driver; canViewContactInfo: boolean; } | null>(null);
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const isFull = seatsAvailable === 0;
   const isOwnRide = user?.id === ride.driver.id;
@@ -325,11 +325,13 @@ const RideCard: React.FC<RideCardProps> = ({ ride, requestStatus, refreshData, i
     // Passenger can see driver's contact info only if their request is accepted.
     // The driver can see their own info.
     const isCurrentUserAccepted = ride.passengers.some(p => p.id === user?.id);
-    if (isOwnRide || isCurrentUserAccepted) {
-        setViewingProfile(driver);
-    } else {
-        setViewingProfile({ ...driver, phone_number: null });
-    }
+    const canViewContactInfo = isOwnRide || isCurrentUserAccepted;
+    setViewingProfile({ profile: driver, canViewContactInfo });
+  };
+  
+  const handlePassengerProfileClick = (p: Driver) => {
+    // Driver can always view passenger's info if they are on their ride.
+    setViewingProfile({ profile: p, canViewContactInfo: true });
   };
 
   return (
@@ -420,7 +422,7 @@ const RideCard: React.FC<RideCardProps> = ({ ride, requestStatus, refreshData, i
                 )}
                 {isDriverView ? (
                     status !== RideStatus.Completed ? (
-                        <PassengerList ride={ride} onProfileClick={setViewingProfile} onRatePassenger={onRatePassenger} />
+                        <PassengerList ride={ride} onProfileClick={handlePassengerProfileClick} onRatePassenger={onRatePassenger} />
                     ) : (
                         <div className="text-right">
                           <p className="text-sm font-medium text-slate-700">{passengers.length} Passenger{passengers.length !== 1 ? 's' : ''}</p>
@@ -496,12 +498,16 @@ const RideCard: React.FC<RideCardProps> = ({ ride, requestStatus, refreshData, i
 
             {shouldShowRatePassengersSection && (
                 <div className="mt-4 pt-4 border-t border-slate-200">
-                    <PassengerList ride={ride} onProfileClick={setViewingProfile} onRatePassenger={onRatePassenger} />
+                    <PassengerList ride={ride} onProfileClick={handlePassengerProfileClick} onRatePassenger={onRatePassenger} />
                 </div>
             )}
         </div>
       </div>
-      <ProfileModal profile={viewingProfile} onClose={() => setViewingProfile(null)} />
+      <ProfileModal
+        profile={viewingProfile?.profile ?? null}
+        onClose={() => setViewingProfile(null)}
+        canViewContactInfo={viewingProfile?.canViewContactInfo}
+      />
       <PaymentInfoModal 
         isOpen={isPaymentModalOpen}
         onClose={() => setIsPaymentModalOpen(false)}

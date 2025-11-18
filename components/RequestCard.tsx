@@ -270,7 +270,7 @@ const RequestCard: React.FC<RequestCardProps> = ({ request, viewAs, refreshData,
                 <div className="flex justify-between items-center">
                     <button
                         type="button"
-                        onClick={() => setViewingProfile({ ...driver, phone_number: null })}
+                        onClick={() => setViewingProfile(driver)}
                         className="flex items-center space-x-3 text-left p-1 -m-1 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:cursor-default disabled:hover:bg-transparent hover:bg-slate-100"
                     >
                         <img className="h-10 w-10 rounded-full object-cover" src={driver.avatar_url || DEFAULT_AVATAR_URL} alt={`Driver ${driver.name}`} />
@@ -341,19 +341,19 @@ const RequestCard: React.FC<RequestCardProps> = ({ request, viewAs, refreshData,
               )}
             </div>
         </div>
-        <ProfileModal profile={viewingProfile} onClose={() => setViewingProfile(null)} />
+        <ProfileModal
+            profile={viewingProfile}
+            onClose={() => setViewingProfile(null)}
+            canViewContactInfo={status === RequestStatus.Accepted || status === RequestStatus.PendingPassengerApproval}
+        />
       </>
     );
   }
 
   // --- DRIVER VIEW ---
   const handlePassengerProfileClick = () => {
-    // Driver can see contact info only AFTER accepting.
-    if (status === RequestStatus.Accepted) {
-        setViewingProfile(passenger);
-    } else {
-        setViewingProfile({ ...passenger, phone_number: null });
-    }
+    // Pass the full passenger object; modal will determine if contact info is visible.
+    setViewingProfile(passenger);
   };
 
   return (
@@ -455,7 +455,11 @@ const RequestCard: React.FC<RequestCardProps> = ({ request, viewAs, refreshData,
           )}
         </div>
       </div>
-      <ProfileModal profile={viewingProfile} onClose={() => setViewingProfile(null)} />
+      <ProfileModal
+        profile={viewingProfile}
+        onClose={() => setViewingProfile(null)}
+        canViewContactInfo={status === RequestStatus.Accepted || status === RequestStatus.Pending}
+      />
     </>
   );
 };

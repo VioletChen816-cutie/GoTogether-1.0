@@ -206,7 +206,7 @@ const FulfillRequestModal: React.FC<FulfillRequestModalProps> = ({ isOpen, onClo
 const PassengerRideRequestCard: React.FC<PassengerRideRequestCardProps> = ({ request, refreshData, onRequestFulfilled }) => {
   const { user, profile: driverProfile, openAuthModal } = useAuth();
   const { from, to, departureDate, flexibleTime, seatsNeeded, passenger, notes, willingToSplitFuel, status, fulfilled_by } = request;
-  const [viewingProfile, setViewingProfile] = useState<Driver | null>(null);
+  const [viewingProfile, setViewingProfile] = useState<{ profile: Driver; canViewContactInfo: boolean; } | null>(null);
   const [isFulfillModalOpen, setIsFulfillModalOpen] = useState(false);
 
   const formattedDate = departureDate.toLocaleDateString(undefined, {
@@ -240,17 +240,13 @@ const PassengerRideRequestCard: React.FC<PassengerRideRequestCardProps> = ({ req
 
   const handlePassengerProfileClick = () => {
     // Never show passenger contact info from a public request card.
-    setViewingProfile({ ...passenger, phone_number: null });
+    setViewingProfile({ profile: passenger, canViewContactInfo: false });
   };
   
   const handleFulfilledByProfileClick = () => {
     if (!fulfilled_by) return;
     // Only the passenger who made the request can see the driver's contact info.
-    if (isOwnRequest) {
-      setViewingProfile(fulfilled_by);
-    } else {
-      setViewingProfile({ ...fulfilled_by, phone_number: null });
-    }
+    setViewingProfile({ profile: fulfilled_by, canViewContactInfo: isOwnRequest });
   };
 
 
@@ -355,7 +351,11 @@ const PassengerRideRequestCard: React.FC<PassengerRideRequestCardProps> = ({ req
             </div>
         </div>
       </div>
-      <ProfileModal profile={viewingProfile} onClose={() => setViewingProfile(null)} />
+      <ProfileModal
+        profile={viewingProfile?.profile ?? null}
+        onClose={() => setViewingProfile(null)}
+        canViewContactInfo={viewingProfile?.canViewContactInfo}
+      />
       <FulfillRequestModal 
         isOpen={isFulfillModalOpen}
         onClose={() => setIsFulfillModalOpen(false)}

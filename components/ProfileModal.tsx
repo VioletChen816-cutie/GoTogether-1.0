@@ -6,6 +6,7 @@ import ContactInfo from './ContactInfo';
 interface ProfileModalProps {
   profile: Driver | null;
   onClose: () => void;
+  canViewContactInfo?: boolean;
 }
 
 const VerifiedBadge: React.FC<{className?: string}> = ({className}) => (
@@ -15,7 +16,7 @@ const VerifiedBadge: React.FC<{className?: string}> = ({className}) => (
     </span>
 );
 
-const ProfileModal: React.FC<ProfileModalProps> = ({ profile, onClose }) => {
+const ProfileModal: React.FC<ProfileModalProps> = ({ profile, onClose, canViewContactInfo = false }) => {
   if (!profile) return null;
 
   return (
@@ -58,7 +59,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ profile, onClose }) => {
         </div>
         
         <div className="mt-6 border-t border-slate-200 pt-4">
-            <ContactInfo rideConfirmed={!!profile.phone_number} userPhoneNumber={profile.phone_number} />
+            <ContactInfo rideConfirmed={canViewContactInfo} userPhoneNumber={profile.phone_number} />
         </div>
 
       </div>

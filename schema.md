@@ -315,6 +315,8 @@ $$;
 CREATE OR REPLACE FUNCTION public.handle_request_update(request_id_arg uuid, new_status public.request_status)
 RETURNS void
 LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
 AS $$
 DECLARE
   _request public.requests;
